@@ -44,7 +44,6 @@ const newTasks = ref<Record<DayKey, string>>({
 	saturday: '',
 	sunday: '',
 })
-const loading = ref(false)
 
 function emptyWeek(): WeekData {
 	return {
@@ -138,7 +137,6 @@ function normalizeWeekData(data: unknown): WeekData {
 }
 
 async function loadWeek() {
-	loading.value = true
 	try {
 		const url = generateUrl('/apps/weekplanner/week/{year}/{week}', {
 			year: String(currentYear.value),
@@ -148,8 +146,6 @@ async function loadWeek() {
 		weekData.value = normalizeWeekData(response.data)
 	} catch {
 		weekData.value = emptyWeek()
-	} finally {
-		loading.value = false
 	}
 }
 
@@ -251,10 +247,6 @@ onMounted(() => {
 					<h2 class="weekplanner-title">
 						{{ weekLabel }}
 					</h2>
-				</div>
-
-				<div v-if="loading" class="weekplanner-loading">
-					Loading…
 				</div>
 
 				<div class="week-grid">
@@ -377,12 +369,6 @@ onMounted(() => {
 	color: var(--color-main-text);
 }
 
-.weekplanner-loading {
-	text-align: center;
-	padding: 12px;
-	color: var(--color-text-maxcontrast);
-}
-
 .week-grid {
 	display: grid;
 	grid-template-columns: repeat(5, 1fr) 0.8fr;
@@ -488,19 +474,23 @@ onMounted(() => {
 }
 
 .task-delete {
-	display: none;
+	visibility: hidden;
 	background: none;
 	border: none;
 	cursor: pointer;
-	color: var(--color-error);
+	color: var(--color-text-maxcontrast);
 	font-size: 18px;
 	padding: 0 4px;
 	line-height: 1;
 	flex-shrink: 0;
 }
 
+.task-delete:hover {
+	color: var(--color-error);
+}
+
 .task-item:hover .task-delete {
-	display: block;
+	visibility: visible;
 }
 
 .task-add {
