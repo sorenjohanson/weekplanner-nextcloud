@@ -449,12 +449,17 @@ onMounted(() => {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 6px 8px;
-	margin: 2px 0;
+	padding: 8px 10px;
+	margin: 0;
 	border-radius: 4px;
 	cursor: grab;
 	background-color: var(--color-main-background);
 	transition: background-color 0.15s;
+	border-bottom: 1px solid var(--color-border);
+}
+
+.task-item:last-child {
+	border-bottom: none;
 }
 
 .task-item:hover {
@@ -485,7 +490,7 @@ onMounted(() => {
 }
 
 .task-delete:hover {
-	color: var(--color-error);
+	color: #a01;
 }
 
 .task-item:hover .task-delete {
