@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace OCA\WeekPlanner\Controller;
 
 use OCA\WeekPlanner\AppInfo\Application;
+use OCA\WeekPlanner\Db\Week;
+use OCA\WeekPlanner\Db\WeekMapper;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\FrontpageRoute;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
-use OCP\Files\IRootFolder;
 use OCP\IRequest;
 use OCP\IUserSession;
 
@@ -20,7 +21,7 @@ use OCP\IUserSession;
 class WeekController extends Controller {
 	public function __construct(
 		IRequest $request,
-		private IRootFolder $rootFolder,
+		private WeekMapper $weekMapper,
 		private IUserSession $userSession,
 	) {
 		parent::__construct(Application::APP_ID, $request);
@@ -34,19 +35,12 @@ class WeekController extends Controller {
 			return new JSONResponse(['error' => 'Not logged in'], Http::STATUS_UNAUTHORIZED);
 		}
 
-		$userFolder = $this->rootFolder->getUserFolder($user->getUID());
-		$fileName = sprintf('weekplanner/%d-W%02d.json', $year, $week);
-
-		try {
-			if ($userFolder->nodeExists($fileName)) {
-				$file = $userFolder->get($fileName);
-				$data = json_decode($file->getContent(), true);
-				if (is_array($data)) {
-					return new JSONResponse($data);
-				}
+		$entity = $this->weekMapper->findByUserAndWeek($user->getUID(), $year, $week);
+		if ($entity !== null) {
+			$data = json_decode($entity->getData(), true);
+			if (is_array($data)) {
+				return new JSONResponse($data);
 			}
-		} catch (\Exception $e) {
-			// File doesn't exist or can't be read, return empty week
 		}
 
 		return new JSONResponse($this->emptyWeek());
@@ -60,23 +54,20 @@ class WeekController extends Controller {
 			return new JSONResponse(['error' => 'Not logged in'], Http::STATUS_UNAUTHORIZED);
 		}
 
-		$userFolder = $this->rootFolder->getUserFolder($user->getUID());
-		$data = ['days' => $days];
+		$userId = $user->getUID();
+		$jsonData = json_encode(['days' => $days], JSON_UNESCAPED_UNICODE);
 
-		if (!$userFolder->nodeExists('weekplanner')) {
-			$userFolder->newFolder('weekplanner');
-		}
-
-		$fileName = sprintf('weekplanner/%d-W%02d.json', $year, $week);
-		$jsonContent = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-
-		if ($userFolder->nodeExists($fileName)) {
-			$file = $userFolder->get($fileName);
-			$file->putContent($jsonContent);
+		$existing = $this->weekMapper->findByUserAndWeek($userId, $year, $week);
+		if ($existing !== null) {
+			$existing->setData($jsonData);
+			$this->weekMapper->update($existing);
 		} else {
-			$folder = $userFolder->get('weekplanner');
-			$file = $folder->newFile(sprintf('%d-W%02d.json', $year, $week));
-			$file->putContent($jsonContent);
+			$entity = new Week();
+			$entity->setUserId($userId);
+			$entity->setYear($year);
+			$entity->setWeek($week);
+			$entity->setData($jsonData);
+			$this->weekMapper->insert($entity);
 		}
 
 		return new JSONResponse(['status' => 'ok']);
