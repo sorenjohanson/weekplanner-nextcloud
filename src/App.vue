@@ -315,9 +315,9 @@ onMounted(() => {
 											<span class="task-title" @click="toggleDone(day, element.id)">
 												{{ element.title }}
 											</span>
-											<button class="task-delete" @click="deleteTask(day, element.id)">
-												&times;
-											</button>
+											<span class="task-delete" role="button" tabindex="0" @click="deleteTask(day, element.id)" @keydown.enter="deleteTask(day, element.id)">
+												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M9,8H11V17H9V8M13,8H15V17H13V8Z" /></svg>
+											</span>
 										</div>
 									</template>
 								</draggable>
@@ -449,7 +449,7 @@ onMounted(() => {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 8px 10px;
+	padding: 10px 12px;
 	margin: 0;
 	border-radius: 4px;
 	cursor: grab;
