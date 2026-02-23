@@ -532,4 +532,27 @@ onMounted(() => {
 .task-add-btn:hover {
 	color: var(--color-primary-element-hover);
 }
+
+@media (max-width: 768px) {
+	.weekplanner-header {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 8px;
+	}
+
+	.week-grid {
+		grid-template-columns: 1fr;
+		overflow: visible;
+	}
+
+	.day-column,
+	.weekend-column,
+	.weekend-half {
+		min-height: unset;
+	}
+
+	.day-tasks {
+		overflow-y: visible;
+	}
+}
 </style>
