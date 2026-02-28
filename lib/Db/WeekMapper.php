@@ -11,9 +11,11 @@ use OCP\IDBConnection;
 
 /**
  * @template-extends QBMapper<Week>
- * @psalm-suppress PossiblyUnusedMethod
  */
 class WeekMapper extends QBMapper {
+	/**
+	 * @psalm-suppress PossiblyUnusedMethod
+	 */
 	public function __construct(IDBConnection $db) {
 		parent::__construct($db, 'weekplanner_weeks', Week::class);
 	}
