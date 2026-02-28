@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import NcAppContent from '@nextcloud/vue/components/NcAppContent'
 import NcContent from '@nextcloud/vue/components/NcContent'
 import NcButton from '@nextcloud/vue/components/NcButton'
@@ -11,6 +11,7 @@ interface Task {
 	id: string
 	title: string
 	done: boolean
+	notes: string
 }
 
 type DayKey = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'
@@ -44,6 +45,12 @@ const newTasks = ref<Record<DayKey, string>>({
 	saturday: '',
 	sunday: '',
 })
+
+// Edit dialog state
+const editingTask = ref<{ day: DayKey; taskId: string } | null>(null)
+const editTitle = ref('')
+const editNotes = ref('')
+const editTitleInput = ref<HTMLInputElement | null>(null)
 
 function emptyWeek(): WeekData {
 	return {
@@ -128,7 +135,10 @@ function normalizeWeekData(data: unknown): WeekData {
 		if (days && typeof days === 'object') {
 			for (const key of ALL_KEYS) {
 				if (Array.isArray(days[key])) {
-					result.days[key] = days[key] as Task[]
+					result.days[key] = (days[key] as Task[]).map((t) => ({
+						...t,
+						notes: t.notes || '',
+					}))
 				}
 			}
 		}
@@ -173,6 +183,7 @@ function addTask(day: DayKey) {
 		id: crypto.randomUUID(),
 		title,
 		done: false,
+		notes: '',
 	})
 	newTasks.value[day] = ''
 	debouncedSave()
@@ -189,6 +200,34 @@ function toggleDone(day: DayKey, taskId: string) {
 function deleteTask(day: DayKey, taskId: string) {
 	weekData.value.days[day] = weekData.value.days[day].filter((t) => t.id !== taskId)
 	debouncedSave()
+}
+
+function openEdit(day: DayKey, task: Task) {
+	editingTask.value = { day, taskId: task.id }
+	editTitle.value = task.title
+	editNotes.value = task.notes || ''
+	nextTick(() => {
+		editTitleInput.value?.focus()
+	})
+}
+
+function saveEdit() {
+	if (!editingTask.value) return
+	const { day, taskId } = editingTask.value
+	const task = weekData.value.days[day].find((t) => t.id === taskId)
+	if (task) {
+		task.title = editTitle.value.trim() || task.title
+		task.notes = editNotes.value
+		debouncedSave()
+	}
+	editingTask.value = null
+}
+
+function deleteEditingTask() {
+	if (!editingTask.value) return
+	const { day, taskId } = editingTask.value
+	deleteTask(day, taskId)
+	editingTask.value = null
 }
 
 function onDragChange() {
@@ -269,12 +308,22 @@ onMounted(() => {
 							>
 								<template #item="{ element }: { element: Task }">
 									<div class="task-item" :class="{ done: element.done }">
-										<span class="task-title" @click="toggleDone(day, element.id)">
+										<span class="task-title" @click="openEdit(day, element)">
 											{{ element.title }}
 										</span>
-										<span class="task-delete" role="button" tabindex="0" @click="deleteTask(day, element.id)" @keydown.enter="deleteTask(day, element.id)">
-											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M9,8H11V17H9V8M13,8H15V17H13V8Z" /></svg>
-										</span>
+										<button
+											class="task-check"
+											:class="{ checked: element.done }"
+											@click.stop="toggleDone(day, element.id)"
+										>
+											<svg v-if="!element.done" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+												<circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5" />
+											</svg>
+											<svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+												<circle cx="12" cy="12" r="10" fill="var(--color-primary-element)" stroke="var(--color-primary-element)" stroke-width="1.5" />
+												<path d="M8 12l2.5 2.5L16 9" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+											</svg>
+										</button>
 									</div>
 								</template>
 							</draggable>
@@ -312,12 +361,22 @@ onMounted(() => {
 								>
 									<template #item="{ element }: { element: Task }">
 										<div class="task-item" :class="{ done: element.done }">
-											<span class="task-title" @click="toggleDone(day, element.id)">
+											<span class="task-title" @click="openEdit(day, element)">
 												{{ element.title }}
 											</span>
-											<span class="task-delete" role="button" tabindex="0" @click="deleteTask(day, element.id)" @keydown.enter="deleteTask(day, element.id)">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M9,8H11V17H9V8M13,8H15V17H13V8Z" /></svg>
-											</span>
+											<button
+												class="task-check"
+												:class="{ checked: element.done }"
+												@click.stop="toggleDone(day, element.id)"
+											>
+												<svg v-if="!element.done" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+													<circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5" />
+												</svg>
+												<svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+													<circle cx="12" cy="12" r="10" fill="var(--color-primary-element)" stroke="var(--color-primary-element)" stroke-width="1.5" />
+													<path d="M8 12l2.5 2.5L16 9" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+												</svg>
+											</button>
 										</div>
 									</template>
 								</draggable>
@@ -333,6 +392,46 @@ onMounted(() => {
 									</button>
 								</div>
 							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Edit Task Dialog -->
+				<div v-if="editingTask" class="edit-overlay" @click.self="saveEdit">
+					<div class="edit-dialog" @keydown.escape="saveEdit">
+						<div class="edit-dialog-header">
+							<h3>Edit Task</h3>
+							<button class="edit-dialog-close" @click="saveEdit">
+								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+									<path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" />
+								</svg>
+							</button>
+						</div>
+						<div class="edit-dialog-body">
+							<label class="edit-label" for="edit-title">Title</label>
+							<input
+								id="edit-title"
+								ref="editTitleInput"
+								v-model="editTitle"
+								class="edit-title-input"
+								@keydown.enter="saveEdit"
+							>
+							<label class="edit-label edit-label-notes" for="edit-notes">Notes</label>
+							<textarea
+								id="edit-notes"
+								v-model="editNotes"
+								class="edit-notes-input"
+								placeholder="Add notes…"
+								rows="5"
+							/>
+						</div>
+						<div class="edit-dialog-footer">
+							<NcButton type="primary" @click="saveEdit">
+								Save
+							</NcButton>
+							<button class="edit-delete-btn" @click="deleteEditingTask">
+								Delete
+							</button>
 						</div>
 					</div>
 				</div>
@@ -478,23 +577,29 @@ onMounted(() => {
 	word-break: break-word;
 }
 
-.task-delete {
-	visibility: hidden;
+.task-check {
+	background: none;
+	border: none;
 	cursor: pointer;
-	color: var(--color-text-maxcontrast);
-	padding: 0 4px;
-	line-height: 0;
+	padding: 0;
+	margin-left: 8px;
 	flex-shrink: 0;
 	display: flex;
 	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	color: var(--color-text-maxcontrast);
+	transition: color 0.15s;
 }
 
-.task-delete:hover {
-	color: #a01;
+.task-check:hover {
+	color: var(--color-primary-element);
 }
 
-.task-item:hover .task-delete {
-	visibility: visible;
+.task-check.checked {
+	color: var(--color-primary-element);
 }
 
 .task-add {
@@ -533,6 +638,141 @@ onMounted(() => {
 	color: var(--color-primary-element-hover);
 }
 
+/* Edit dialog */
+.edit-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 9999;
+}
+
+.edit-dialog {
+	background-color: var(--color-main-background);
+	border-radius: 12px;
+	width: 480px;
+	max-width: 90vw;
+	max-height: 90vh;
+	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+	display: flex;
+	flex-direction: column;
+}
+
+.edit-dialog-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 16px 20px;
+	border-bottom: 1px solid var(--color-border);
+}
+
+.edit-dialog-header h3 {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 600;
+	color: var(--color-main-text);
+}
+
+.edit-dialog-close {
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: var(--color-text-maxcontrast);
+	padding: 4px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.edit-dialog-close:hover {
+	background-color: var(--color-background-hover);
+	color: var(--color-main-text);
+}
+
+.edit-dialog-body {
+	padding: 20px;
+	flex: 1;
+	overflow-y: auto;
+}
+
+.edit-label {
+	display: block;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-main-text);
+	margin-bottom: 6px;
+}
+
+.edit-label-notes {
+	margin-top: 16px;
+}
+
+.edit-title-input {
+	width: 100%;
+	padding: 8px 12px;
+	border: 2px solid var(--color-border-dark);
+	border-radius: 6px;
+	font-size: 14px;
+	color: var(--color-main-text);
+	background-color: var(--color-main-background);
+	outline: none;
+	box-sizing: border-box;
+}
+
+.edit-title-input:focus {
+	border-color: var(--color-primary-element);
+}
+
+.edit-notes-input {
+	width: 100%;
+	padding: 8px 12px;
+	border: 2px solid var(--color-border-dark);
+	border-radius: 6px;
+	font-size: 14px;
+	color: var(--color-main-text);
+	background-color: var(--color-main-background);
+	outline: none;
+	resize: vertical;
+	font-family: inherit;
+	box-sizing: border-box;
+}
+
+.edit-notes-input:focus {
+	border-color: var(--color-primary-element);
+}
+
+.edit-notes-input::placeholder {
+	color: var(--color-text-maxcontrast);
+}
+
+.edit-dialog-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 16px 20px;
+	border-top: 1px solid var(--color-border);
+}
+
+.edit-delete-btn {
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: #c00;
+	font-size: 14px;
+	padding: 8px 16px;
+	border-radius: 6px;
+}
+
+.edit-delete-btn:hover {
+	background-color: rgba(200, 0, 0, 0.1);
+}
+
 @media (max-width: 768px) {
 	.weekplanner-header {
 		flex-direction: column;
@@ -553,6 +793,10 @@ onMounted(() => {
 
 	.day-tasks {
 		overflow-y: visible;
+	}
+
+	.edit-dialog {
+		width: 95vw;
 	}
 }
 </style>
