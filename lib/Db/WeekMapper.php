@@ -11,6 +11,7 @@ use OCP\IDBConnection;
 
 /**
  * @template-extends QBMapper<Week>
+ * @psalm-suppress PossiblyUnusedMethod
  */
 class WeekMapper extends QBMapper {
 	public function __construct(IDBConnection $db) {

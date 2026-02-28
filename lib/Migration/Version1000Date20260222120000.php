@@ -12,10 +12,10 @@ use OCP\Migration\SimpleMigrationStep;
 
 /**
  * @psalm-suppress UnusedClass
+ * @psalm-suppress UndefinedDocblockClass
  */
 class Version1000Date20260222120000 extends SimpleMigrationStep {
 	public function changeSchema(IOutput $output, Closure $schemaClosure, array $options): ?ISchemaWrapper {
-		/** @var ISchemaWrapper $schema */
 		$schema = $schemaClosure();
 
 		if (!$schema->hasTable('weekplanner_weeks')) {

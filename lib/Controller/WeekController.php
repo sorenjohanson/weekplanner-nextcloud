@@ -37,6 +37,7 @@ class WeekController extends Controller {
 
 		$entity = $this->weekMapper->findByUserAndWeek($user->getUID(), $year, $week);
 		if ($entity !== null) {
+			/** @psalm-suppress MixedAssignment */
 			$data = json_decode($entity->getData(), true);
 			if (is_array($data)) {
 				return new JSONResponse($data);

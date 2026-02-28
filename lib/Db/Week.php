@@ -15,11 +15,16 @@ use OCP\AppFramework\Db\Entity;
  * @method void setWeek(int $week)
  * @method string getData()
  * @method void setData(string $data)
+ * @psalm-suppress PropertyNotSetInConstructor
  */
 class Week extends Entity {
+	/** @psalm-suppress PossiblyUnusedProperty */
 	protected string $userId = '';
+	/** @psalm-suppress PossiblyUnusedProperty */
 	protected int $year = 0;
+	/** @psalm-suppress PossiblyUnusedProperty */
 	protected int $week = 0;
+	/** @psalm-suppress PossiblyUnusedProperty */
 	protected string $data = '{}';
 
 	public function __construct() {
