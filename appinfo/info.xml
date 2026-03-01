@@ -5,7 +5,7 @@
 	<name>Week Planner</name>
 	<summary>Weekly planner like Tweek</summary>
 	<description>Provides a weekly overview of todos, allowing users to drag and drop between days and tick off tasks as they get done.</description>
-	<version>1.1.0</version>
+	<version>1.2.0</version>
 	<licence>AGPL-3.0-or-later</licence>
 	<author mail="soeren@soeren.codes" homepage="https://www.soeren.codes">Sören Johanson</author>
 	<namespace>WeekPlanner</namespace>
