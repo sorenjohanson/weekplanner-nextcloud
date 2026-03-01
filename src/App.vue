@@ -611,10 +611,6 @@ onMounted(() => {
 	appearance: none;
 }
 
-.task-check:hover {
-	color: var(--color-primary-element);
-}
-
 .task-check.checked {
 	color: var(--color-primary-element);
 }
