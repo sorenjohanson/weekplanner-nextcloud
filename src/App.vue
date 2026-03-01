@@ -311,7 +311,7 @@ onMounted(() => {
 										<span class="task-title" @click="openEdit(day, element)">
 											{{ element.title }}
 										</span>
-										<svg v-if="element.notes" class="task-notes-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+										<svg v-if="element.notes" class="task-notes-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
 											<path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M14,18H6V16H14V18M18,14H6V12H18V14M13,9V3.5L18.5,9H13Z" />
 										</svg>
 										<button
@@ -319,13 +319,19 @@ onMounted(() => {
 											:class="{ checked: element.done }"
 											@click.stop="toggleDone(day, element.id)"
 										>
-											<svg v-if="!element.done" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
-												<circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5" />
-											</svg>
-											<svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+											<svg v-if="element.done" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
 												<circle cx="12" cy="12" r="10" fill="var(--color-primary-element)" stroke="var(--color-primary-element)" stroke-width="1.5" />
 												<path d="M8 12l2.5 2.5L16 9" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
 											</svg>
+											<template v-else>
+												<svg class="check-idle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+													<circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5" />
+												</svg>
+												<svg class="check-hover" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+													<circle cx="12" cy="12" r="10" fill="var(--color-primary-element)" stroke="var(--color-primary-element)" stroke-width="1.5" />
+													<path d="M8 12l2.5 2.5L16 9" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+												</svg>
+											</template>
 										</button>
 									</div>
 								</template>
@@ -367,7 +373,7 @@ onMounted(() => {
 											<span class="task-title" @click="openEdit(day, element)">
 												{{ element.title }}
 											</span>
-											<svg v-if="element.notes" class="task-notes-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+											<svg v-if="element.notes" class="task-notes-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
 												<path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M14,18H6V16H14V18M18,14H6V12H18V14M13,9V3.5L18.5,9H13Z" />
 											</svg>
 											<button
@@ -375,13 +381,19 @@ onMounted(() => {
 												:class="{ checked: element.done }"
 												@click.stop="toggleDone(day, element.id)"
 											>
-												<svg v-if="!element.done" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
-													<circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5" />
-												</svg>
-												<svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+												<svg v-if="element.done" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
 													<circle cx="12" cy="12" r="10" fill="var(--color-primary-element)" stroke="var(--color-primary-element)" stroke-width="1.5" />
 													<path d="M8 12l2.5 2.5L16 9" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
 												</svg>
+												<template v-else>
+													<svg class="check-idle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+														<circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5" />
+													</svg>
+													<svg class="check-hover" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+														<circle cx="12" cy="12" r="10" fill="var(--color-primary-element)" stroke="var(--color-primary-element)" stroke-width="1.5" />
+														<path d="M8 12l2.5 2.5L16 9" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+													</svg>
+												</template>
 											</button>
 										</div>
 									</template>
@@ -585,7 +597,8 @@ onMounted(() => {
 
 .task-notes-icon {
 	flex-shrink: 0;
-	margin-left: 6px;
+	margin-left: 8px;
+	margin-right: 4px;
 	color: var(--color-primary-element);
 	opacity: 0.5;
 }
@@ -605,7 +618,6 @@ onMounted(() => {
 	height: 20px;
 	border-radius: 50%;
 	color: var(--color-text-maxcontrast);
-	transition: color 0.15s;
 	-webkit-appearance: none;
 	-moz-appearance: none;
 	appearance: none;
@@ -613,12 +625,28 @@ onMounted(() => {
 
 .task-check:hover,
 .task-check:focus {
-	color: var(--color-primary-element);
 	background-color: transparent !important;
 }
 
 .task-check.checked {
 	color: var(--color-primary-element);
+}
+
+.task-check .check-hover {
+	display: none;
+	opacity: 0.5;
+}
+
+.task-check .check-idle {
+	display: block;
+}
+
+.task-check:hover .check-idle {
+	display: none;
+}
+
+.task-check:hover .check-hover {
+	display: block;
 }
 
 .task-add {
