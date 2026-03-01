@@ -311,6 +311,9 @@ onMounted(() => {
 										<span class="task-title" @click="openEdit(day, element)">
 											{{ element.title }}
 										</span>
+										<svg v-if="element.notes" class="task-notes-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+											<path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M14,18H6V16H14V18M18,14H6V12H18V14M13,9V3.5L18.5,9H13Z" />
+										</svg>
 										<button
 											class="task-check"
 											:class="{ checked: element.done }"
@@ -364,6 +367,9 @@ onMounted(() => {
 											<span class="task-title" @click="openEdit(day, element)">
 												{{ element.title }}
 											</span>
+											<svg v-if="element.notes" class="task-notes-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+												<path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M14,18H6V16H14V18M18,14H6V12H18V14M13,9V3.5L18.5,9H13Z" />
+											</svg>
 											<button
 												class="task-check"
 												:class="{ checked: element.done }"
@@ -422,7 +428,7 @@ onMounted(() => {
 								v-model="editNotes"
 								class="edit-notes-input"
 								placeholder="Add notes…"
-								rows="5"
+								rows="3"
 							/>
 						</div>
 						<div class="edit-dialog-footer">
@@ -577,9 +583,17 @@ onMounted(() => {
 	word-break: break-word;
 }
 
+.task-notes-icon {
+	flex-shrink: 0;
+	margin-left: 6px;
+	color: var(--color-primary-element);
+	opacity: 0.5;
+}
+
 .task-check {
 	background: none;
 	border: none;
+	outline: none;
 	cursor: pointer;
 	padding: 0;
 	margin-left: 8px;
@@ -587,11 +601,14 @@ onMounted(() => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 24px;
-	height: 24px;
+	width: 20px;
+	height: 20px;
 	border-radius: 50%;
 	color: var(--color-text-maxcontrast);
 	transition: color 0.15s;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
 }
 
 .task-check:hover {
@@ -655,12 +672,12 @@ onMounted(() => {
 .edit-dialog {
 	background-color: var(--color-main-background);
 	border-radius: 12px;
-	width: 480px;
+	width: 380px;
 	max-width: 90vw;
-	max-height: 90vh;
 	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
 	display: flex;
 	flex-direction: column;
+	overflow: hidden;
 }
 
 .edit-dialog-header {
@@ -696,9 +713,8 @@ onMounted(() => {
 }
 
 .edit-dialog-body {
-	padding: 20px;
-	flex: 1;
-	overflow-y: auto;
+	padding: 16px 20px;
+	overflow: hidden;
 }
 
 .edit-label {
