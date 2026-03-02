@@ -553,20 +553,20 @@ onMounted(() => {
 	display: flex;
 	flex-direction: column;
 	min-height: 0;
-	overflow-y: auto;
 }
 
 .task-list {
 	flex: 1;
-	min-height: 40px;
+	min-height: 0;
 	padding: 4px;
+	overflow-y: auto;
 }
 
 .task-item {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 10px 12px;
+	padding: 4px 12px;
 	margin: 0;
 	border-radius: 4px;
 	cursor: grab;
@@ -655,6 +655,9 @@ onMounted(() => {
 	gap: 4px;
 	flex-shrink: 0;
 	border-top: 1px solid var(--color-border-dark);
+	position: relative;
+	z-index: 1;
+	background-color: var(--color-main-background);
 }
 
 .task-input {
