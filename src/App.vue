@@ -530,16 +530,16 @@ onMounted(() => {
 	background-color: var(--color-primary-element-light);
 }
 
-.day-header.is-today .day-name {
-	color: var(--color-primary-element);
-	font-weight: 700;
-}
-
 .day-name {
 	display: block;
 	font-size: 14px;
 	font-weight: 600;
 	color: var(--color-main-text);
+}
+
+.day-header.is-today .day-name {
+	color: var(--color-primary-element);
+	font-weight: 700;
 }
 
 .day-date {
@@ -583,16 +583,16 @@ onMounted(() => {
 	background-color: var(--color-background-hover);
 }
 
-.task-item.done .task-title {
-	text-decoration: line-through;
-	color: var(--color-text-maxcontrast);
-}
-
 .task-title {
 	flex: 1;
 	cursor: pointer;
 	font-size: 13px;
-	word-break: break-word;
+	overflow-wrap: break-word;
+}
+
+.task-item.done .task-title {
+	text-decoration: line-through;
+	color: var(--color-text-maxcontrast);
 }
 
 .task-notes-icon {
