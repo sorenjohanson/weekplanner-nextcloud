@@ -1,6 +1,6 @@
 # Week Planner
 
-<img src="img/app.svg" width="100" alt="Week Planner icon">
+<img src="img/app-dark.svg" width="100" alt="Week Planner icon">
 
 A Nextcloud app that gives you a weekly overview of your tasks. Plan your week by organising todos across each day, similar to standalone tools like [Tweek](https://tweek.so) or [TeuxDeux](https://teuxdeux.com), but integrated directly into your Nextcloud instance.
 
