@@ -15,6 +15,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setWeek(int $week)
  * @method string getData()
  * @method void setData(string $data)
+ * @method int getUpdatedAt()
+ * @method void setUpdatedAt(int $updatedAt)
  * @psalm-suppress PropertyNotSetInConstructor
  */
 class Week extends Entity {
@@ -26,11 +28,14 @@ class Week extends Entity {
 	protected int $week = 0;
 	/** @psalm-suppress PossiblyUnusedProperty */
 	protected string $data = '{}';
+	/** @psalm-suppress PossiblyUnusedProperty */
+	protected int $updatedAt = 0;
 
 	public function __construct() {
 		$this->addType('userId', 'string');
 		$this->addType('year', 'integer');
 		$this->addType('week', 'integer');
 		$this->addType('data', 'string');
+		$this->addType('updatedAt', 'integer');
 	}
 }

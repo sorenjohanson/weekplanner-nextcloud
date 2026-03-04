@@ -20,6 +20,21 @@ class WeekMapper extends QBMapper {
 		parent::__construct($db, 'weekplanner_weeks', Week::class);
 	}
 
+	public function getUpdatedAt(string $userId, int $year, int $week): int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('updated_at')
+			->from($this->getTableName())
+			->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+			->andWhere($qb->expr()->eq('year', $qb->createNamedParameter($year, IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->eq('week', $qb->createNamedParameter($week, IQueryBuilder::PARAM_INT)));
+
+		$result = $qb->executeQuery();
+		$row = $result->fetch();
+		$result->closeCursor();
+
+		return $row !== false ? (int)$row['updated_at'] : 0;
+	}
+
 	public function findByUserAndWeek(string $userId, int $year, int $week): ?Week {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select('*')
