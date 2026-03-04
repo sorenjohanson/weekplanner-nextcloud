@@ -161,9 +161,9 @@ async function loadWeek() {
 
 let saveTimeout: ReturnType<typeof setTimeout> | null = null
 let isSaving = false
-let pollInterval: ReturnType<typeof setInterval> | null = null
-
-const POLL_INTERVAL_MS = 30_000
+let knownUpdatedAt = 0
+let pollAbortController: AbortController | null = null
+let shouldPoll = false
 
 function debouncedSave() {
 	if (saveTimeout) clearTimeout(saveTimeout)
@@ -264,24 +264,54 @@ function goToday() {
 	currentWeek.value = week
 }
 
-watch([currentYear, currentWeek], () => {
-	loadWeek()
+function stopLongPoll() {
+	shouldPoll = false
+	pollAbortController?.abort()
+	pollAbortController = null
+}
+
+async function longPoll() {
+	if (!shouldPoll) return
+	const controller = new AbortController()
+	pollAbortController = controller
+	try {
+		const url = generateUrl('/apps/weekplanner/week/{year}/{week}/poll', {
+			year: String(currentYear.value),
+			week: String(currentWeek.value),
+		})
+		const response = await axios.get<{ changed: boolean; updatedAt: number; data?: unknown }>(
+			`${url}?since=${knownUpdatedAt}`,
+			{ signal: controller.signal, timeout: 35_000 },
+		)
+		if (response.data.changed) {
+			knownUpdatedAt = response.data.updatedAt
+			if (saveTimeout === null && !isSaving && !editingTask.value) {
+				weekData.value = normalizeWeekData(response.data.data)
+			}
+		}
+	} catch {
+		if (pollAbortController?.signal.aborted) return
+		await new Promise((resolve) => setTimeout(resolve, 5_000))
+	}
+	longPoll()
+}
+
+watch([currentYear, currentWeek], async () => {
+	stopLongPoll()
+	knownUpdatedAt = 0
+	await loadWeek()
+	shouldPoll = true
+	longPoll()
 })
 
 onMounted(() => {
 	const { year, week } = getISOWeek(new Date())
 	currentYear.value = year
 	currentWeek.value = week
-
-	pollInterval = setInterval(() => {
-		if (saveTimeout === null && !isSaving && !editingTask.value) {
-			loadWeek()
-		}
-	}, POLL_INTERVAL_MS)
 })
 
 onUnmounted(() => {
-	if (pollInterval) clearInterval(pollInterval)
+	stopLongPoll()
 	if (saveTimeout) clearTimeout(saveTimeout)
 })
 </script>
