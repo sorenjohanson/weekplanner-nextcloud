@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import NcAppContent from '@nextcloud/vue/components/NcAppContent'
 import NcContent from '@nextcloud/vue/components/NcContent'
 import NcButton from '@nextcloud/vue/components/NcButton'
@@ -160,10 +160,16 @@ async function loadWeek() {
 }
 
 let saveTimeout: ReturnType<typeof setTimeout> | null = null
+let isSaving = false
+let pollInterval: ReturnType<typeof setInterval> | null = null
+
+const POLL_INTERVAL_MS = 30_000
 
 function debouncedSave() {
 	if (saveTimeout) clearTimeout(saveTimeout)
 	saveTimeout = setTimeout(async () => {
+		saveTimeout = null
+		isSaving = true
 		try {
 			const url = generateUrl('/apps/weekplanner/week/{year}/{week}', {
 				year: String(currentYear.value),
@@ -172,6 +178,8 @@ function debouncedSave() {
 			await axios.put(url, weekData.value)
 		} catch {
 			// Save failed silently
+		} finally {
+			isSaving = false
 		}
 	}, 300)
 }
@@ -264,6 +272,17 @@ onMounted(() => {
 	const { year, week } = getISOWeek(new Date())
 	currentYear.value = year
 	currentWeek.value = week
+
+	pollInterval = setInterval(() => {
+		if (saveTimeout === null && !isSaving && !editingTask.value) {
+			loadWeek()
+		}
+	}, POLL_INTERVAL_MS)
+})
+
+onUnmounted(() => {
+	if (pollInterval) clearInterval(pollInterval)
+	if (saveTimeout) clearTimeout(saveTimeout)
 })
 </script>
 
