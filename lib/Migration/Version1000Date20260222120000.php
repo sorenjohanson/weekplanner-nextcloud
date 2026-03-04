@@ -39,6 +39,10 @@ class Version1000Date20260222120000 extends SimpleMigrationStep {
 				'notnull' => true,
 				'default' => '{}',
 			]);
+			$table->addColumn('updated_at', Types::BIGINT, [
+				'notnull' => true,
+				'default' => 0,
+			]);
 			$table->setPrimaryKey(['id']);
 			$table->addUniqueIndex(['user_id', 'year', 'week'], 'weekplanner_user_year_week');
 		}
