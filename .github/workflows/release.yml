@@ -1,0 +1,220 @@
+# SPDX-FileCopyrightText: 2026 Sören Johanson
+# SPDX-License-Identifier: MIT
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  # ─── CI checks ─────────────────────────────────────────────────────────
+  # All checks must pass before a release is created.
+
+  lint-info-xml:
+    uses: ./.github/workflows/lint-info-xml.yml
+
+  lint-eslint:
+    uses: ./.github/workflows/lint-eslint.yml
+
+  lint-stylelint:
+    uses: ./.github/workflows/lint-stylelint.yml
+
+  lint-php:
+    uses: ./.github/workflows/lint-php.yml
+
+  lint-php-cs:
+    uses: ./.github/workflows/lint-php-cs.yml
+
+  node-build:
+    uses: ./.github/workflows/node.yml
+
+  psalm:
+    uses: ./.github/workflows/psalm-matrix.yml
+
+  # ─── Release ──────────────────────────────────────────────────────────
+  # Only runs after ALL CI checks pass.
+
+  release:
+    needs: [lint-info-xml, lint-eslint, lint-stylelint, lint-php, lint-php-cs, node-build, psalm]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      APP_ID: weekplanner
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Get release version
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify version matches info.xml
+        run: |
+          XML_VERSION=$(grep -oP '(?<=<version>).*(?=</version>)' appinfo/info.xml)
+          if [ "$XML_VERSION" != "${{ steps.version.outputs.version }}" ]; then
+            echo "::error::Tag version (${{ steps.version.outputs.version }}) does not match info.xml version ($XML_VERSION)"
+            exit 1
+          fi
+
+      - name: Read package.json node and npm engines version
+        uses: skjnldsv/read-package-engines-version-actions@06d6baf7d8f41934ab630e97d9e6c0bc9c9ac5e4 # v3
+        id: versions
+        with:
+          fallbackNode: '^20'
+          fallbackNpm: '^10'
+
+      - name: Set up node ${{ steps.versions.outputs.nodeVersion }}
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ steps.versions.outputs.nodeVersion }}
+
+      - name: Set up npm ${{ steps.versions.outputs.npmVersion }}
+        run: npm i -g 'npm@${{ steps.versions.outputs.npmVersion }}'
+
+      - name: Get php version
+        id: php_versions
+        uses: icewind1991/nextcloud-version-matrix@58becf3b4bb6dc6cef677b15e2fd8e7d48c0908f # v1.3.1
+
+      - name: Set up php${{ steps.php_versions.outputs.php-min }}
+        uses: shivammathur/setup-php@cf4cade2721270509d5b1c766ab3549210a39a2a # v2.33.0
+        with:
+          php-version: ${{ steps.php_versions.outputs.php-min }}
+          extensions: bz2, ctype, curl, dom, fileinfo, gd, iconv, intl, json, libxml, mbstring, openssl, pcntl, posix, session, simplexml, xmlreader, xmlwriter, zip, zlib, sqlite, pdo_sqlite
+          coverage: none
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install npm dependencies
+        env:
+          CYPRESS_INSTALL_BINARY: 0
+          PUPPETEER_SKIP_DOWNLOAD: true
+        run: npm ci
+
+      - name: Build frontend
+        run: |
+          rm -rf js css
+          npm run build
+
+      - name: Assemble app directory
+        run: |
+          mkdir -p /tmp/${{ env.APP_ID }}
+          cp -r appinfo /tmp/${{ env.APP_ID }}/
+          cp -r lib /tmp/${{ env.APP_ID }}/
+          cp -r js /tmp/${{ env.APP_ID }}/
+          cp -r css /tmp/${{ env.APP_ID }}/
+          cp -r img /tmp/${{ env.APP_ID }}/
+          cp -r templates /tmp/${{ env.APP_ID }}/
+          cp LICENSE /tmp/${{ env.APP_ID }}/
+          cp CHANGELOG.md /tmp/${{ env.APP_ID }}/
+
+      - name: Check signing secrets
+        id: signing
+        run: |
+          if [ -n "$APP_PRIVATE_KEY" ] && [ -n "$APP_CERTIFICATE" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::APP_PRIVATE_KEY or APP_CERTIFICATE secret not set — skipping app signing."
+          fi
+        env:
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+          APP_CERTIFICATE: ${{ secrets.APP_CERTIFICATE }}
+
+      - name: Sign app
+        if: steps.signing.outputs.available == 'true'
+        env:
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+          APP_CERTIFICATE: ${{ secrets.APP_CERTIFICATE }}
+        run: |
+          echo "$APP_PRIVATE_KEY" > /tmp/app.key
+          echo "$APP_CERTIFICATE" > /tmp/app.crt
+          php <<'SIGN_EOF'
+          <?php
+          $appId = getenv('APP_ID');
+          $appPath = '/tmp/' . $appId;
+          $privateKey = openssl_pkey_get_private(file_get_contents('/tmp/app.key'));
+          if ($privateKey === false) {
+              fwrite(STDERR, "::error::Failed to load private key\n");
+              exit(1);
+          }
+          $certificate = file_get_contents('/tmp/app.crt');
+
+          $dir = new RecursiveDirectoryIterator($appPath, RecursiveDirectoryIterator::SKIP_DOTS);
+          $iterator = new RecursiveIteratorIterator($dir);
+
+          $hashes = [];
+          foreach ($iterator as $file) {
+              if ($file->isFile()) {
+                  $relativePath = substr($file->getPathname(), strlen($appPath) + 1);
+                  if ($relativePath === 'appinfo/signature.json') {
+                      continue;
+                  }
+                  $hashes[$relativePath] = hash_file('sha512', $file->getPathname());
+              }
+          }
+          ksort($hashes);
+
+          openssl_sign(json_encode($hashes), $signature, $privateKey, OPENSSL_ALGO_SHA512);
+
+          $result = [
+              'hashes' => $hashes,
+              'signature' => base64_encode($signature),
+              'certificate' => $certificate,
+          ];
+
+          file_put_contents("$appPath/appinfo/signature.json", json_encode($result, JSON_PRETTY_PRINT));
+          echo "Signed " . count($hashes) . " files\n";
+          SIGN_EOF
+          rm -f /tmp/app.key /tmp/app.crt
+
+      - name: Create tarball
+        run: |
+          cd /tmp
+          tar czf ${{ env.APP_ID }}-v${{ steps.version.outputs.version }}.tar.gz ${{ env.APP_ID }}
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${{ steps.version.outputs.version }}"
+          ASSET="/tmp/${{ env.APP_ID }}-v${{ steps.version.outputs.version }}.tar.gz"
+          if ! gh release view "$TAG" --repo "${{ github.repository }}" > /dev/null 2>&1; then
+            gh release create "$TAG" "$ASSET" \
+              --repo "${{ github.repository }}" \
+              --title "$TAG" \
+              --generate-notes
+          else
+            gh release upload "$TAG" "$ASSET" \
+              --repo "${{ github.repository }}" \
+              --clobber
+          fi
+
+      - name: Check App Store token
+        id: appstore
+        run: |
+          if [ -n "$NEXTCLOUD_APPSTORE_TOKEN" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::NEXTCLOUD_APPSTORE_TOKEN secret not set — skipping App Store publish."
+          fi
+        env:
+          NEXTCLOUD_APPSTORE_TOKEN: ${{ secrets.NEXTCLOUD_APPSTORE_TOKEN }}
+
+      - name: Publish to Nextcloud App Store
+        if: steps.appstore.outputs.available == 'true'
+        env:
+          NEXTCLOUD_APPSTORE_TOKEN: ${{ secrets.NEXTCLOUD_APPSTORE_TOKEN }}
+        run: |
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version }}/${{ env.APP_ID }}-v${{ steps.version.outputs.version }}.tar.gz"
+          curl -X POST \
+            https://apps.nextcloud.com/api/v1/apps/releases \
+            -H "Authorization: Token $NEXTCLOUD_APPSTORE_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"download\": \"$DOWNLOAD_URL\", \"nightly\": false}"
