@@ -33,7 +33,7 @@ class WeekMapper extends QBMapper {
 		$row = $result->fetch();
 		$result->closeCursor();
 
-		return $row !== false ? (int)$row['updated_at'] : 0;
+		return $row !== false ? $row['updated_at'] : 0;
 	}
 
 	public function findByUserAndWeek(string $userId, int $year, int $week): ?Week {
