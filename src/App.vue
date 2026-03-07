@@ -1057,7 +1057,8 @@ onUnmounted(() => {
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
 	gap: 1px;
-	height: 180px;
+	height: 30vh;
+	min-height: 200px;
 	flex-shrink: 0;
 	background-color: var(--color-border);
 	border: 1px solid var(--color-border);
@@ -1234,28 +1235,22 @@ onUnmounted(() => {
 	}
 
 	.week-grid {
-		grid-template-columns: 1fr;
-		overflow: visible;
-		border-radius: 8px;
+		grid-template-columns: repeat(5, minmax(140px, 1fr)) minmax(120px, 0.8fr);
+		overflow-x: auto;
+		border-radius: 8px 8px 0 0;
+		flex: 1;
 	}
 
 	.custom-columns-grid {
 		grid-template-columns: 1fr;
 		border-top: 1px solid var(--color-border);
-		border-radius: 8px;
-		margin-top: 8px;
+		border-radius: 0 0 8px 8px;
+		height: auto;
 		min-height: unset;
 	}
 
-	.day-column,
-	.weekend-column,
-	.weekend-half,
 	.custom-column {
-		min-height: unset;
-	}
-
-	.day-tasks {
-		overflow-y: visible;
+		min-height: 80px;
 	}
 
 	.edit-dialog {
