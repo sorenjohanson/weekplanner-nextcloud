@@ -117,24 +117,22 @@ jobs:
       - name: Check signing secrets
         id: signing
         run: |
-          if [ -n "$APP_PRIVATE_KEY" ] && [ -n "$APP_CERTIFICATE" ]; then
+          if [ -n "$APP_PRIVATE_KEY" ]; then
             echo "available=true" >> "$GITHUB_OUTPUT"
           else
             echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::APP_PRIVATE_KEY or APP_CERTIFICATE secret not set — skipping app signing."
+            echo "::warning::APP_PRIVATE_KEY secret not set — skipping app signing."
           fi
         env:
           APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
-          APP_CERTIFICATE: ${{ secrets.APP_CERTIFICATE }}
 
       - name: Sign app
         if: steps.signing.outputs.available == 'true'
         env:
           APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
-          APP_CERTIFICATE: ${{ secrets.APP_CERTIFICATE }}
         run: |
           echo "$APP_PRIVATE_KEY" > /tmp/app.key
-          echo "$APP_CERTIFICATE" > /tmp/app.crt
+          curl -sf https://raw.githubusercontent.com/nextcloud/app-certificate-requests/master/weekplanner/weekplanner.crt > /tmp/app.crt
           php <<'SIGN_EOF'
           <?php
           $appId = getenv('APP_ID');
