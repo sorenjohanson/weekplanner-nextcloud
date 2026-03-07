@@ -1057,7 +1057,8 @@ onUnmounted(() => {
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
 	gap: 1px;
-	min-height: 120px;
+	height: 180px;
+	flex-shrink: 0;
 	background-color: var(--color-border);
 	border: 1px solid var(--color-border);
 	border-top: none;
