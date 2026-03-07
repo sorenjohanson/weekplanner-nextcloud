@@ -673,71 +673,41 @@ onUnmounted(() => {
 						</div>
 					</div>
 
-					<div
-						v-for="day in WEEKEND_KEYS"
-						:key="day"
-						class="day-column bottom-column">
-						<div class="day-header" :class="{ 'is-today': isToday(day) }">
-							<span class="day-name">{{ DAY_LABELS[day] }}</span>
-							<span class="day-date">{{ formatDate(day) }}</span>
-						</div>
-						<div class="day-tasks">
-							<draggable
-								v-model="weekData.days[day]"
-								group="weekGroup"
-								item-key="id"
-								class="task-list"
-								@change="onDragChange">
-								<template #item="{ element }: { element: Task }">
-									<div class="task-item" :class="{ done: element.done }">
-										<span class="task-title" @click="openEdit(day, element)">
-											{{ element.title }}
-										</span>
-										<svg v-if="element.notes"
-											class="task-notes-icon"
-											xmlns="http://www.w3.org/2000/svg"
-											viewBox="0 0 24 24"
-											width="20"
-											height="20"
-											fill="currentColor">
-											<path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M14,18H6V16H14V18M18,14H6V12H18V14M13,9V3.5L18.5,9H13Z" />
-										</svg>
-										<button
-											class="task-check"
-											:class="{ checked: element.done }"
-											@click.stop="toggleDone(day, element.id)">
-											<svg v-if="element.done"
+					<div class="weekend-column bottom-column">
+						<div
+							v-for="day in WEEKEND_KEYS"
+							:key="day"
+							class="weekend-half">
+							<div class="day-header" :class="{ 'is-today': isToday(day) }">
+								<span class="day-name">{{ DAY_LABELS[day] }}</span>
+								<span class="day-date">{{ formatDate(day) }}</span>
+							</div>
+							<div class="day-tasks">
+								<draggable
+									v-model="weekData.days[day]"
+									group="weekGroup"
+									item-key="id"
+									class="task-list"
+									@change="onDragChange">
+									<template #item="{ element }: { element: Task }">
+										<div class="task-item" :class="{ done: element.done }">
+											<span class="task-title" @click="openEdit(day, element)">
+												{{ element.title }}
+											</span>
+											<svg v-if="element.notes"
+												class="task-notes-icon"
 												xmlns="http://www.w3.org/2000/svg"
 												viewBox="0 0 24 24"
 												width="20"
-												height="20">
-												<circle cx="12"
-													cy="12"
-													r="10"
-													fill="var(--color-primary-element)"
-													stroke="var(--color-primary-element)"
-													stroke-width="1.5" />
-												<path d="M8 12l2.5 2.5L16 9"
-													fill="none"
-													stroke="white"
-													stroke-width="2"
-													stroke-linecap="round"
-													stroke-linejoin="round" />
+												height="20"
+												fill="currentColor">
+												<path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M14,18H6V16H14V18M18,14H6V12H18V14M13,9V3.5L18.5,9H13Z" />
 											</svg>
-											<template v-else>
-												<svg class="check-idle"
-													xmlns="http://www.w3.org/2000/svg"
-													viewBox="0 0 24 24"
-													width="20"
-													height="20">
-													<circle cx="12"
-														cy="12"
-														r="10"
-														fill="none"
-														stroke="currentColor"
-														stroke-width="1.5" />
-												</svg>
-												<svg class="check-hover"
+											<button
+												class="task-check"
+												:class="{ checked: element.done }"
+												@click.stop="toggleDone(day, element.id)">
+												<svg v-if="element.done"
 													xmlns="http://www.w3.org/2000/svg"
 													viewBox="0 0 24 24"
 													width="20"
@@ -755,20 +725,52 @@ onUnmounted(() => {
 														stroke-linecap="round"
 														stroke-linejoin="round" />
 												</svg>
-											</template>
-										</button>
-									</div>
-								</template>
-							</draggable>
-							<div class="task-add">
-								<input
-									v-model="newTasks[day]"
-									class="task-input"
-									placeholder="Add task…"
-									@keydown.enter="addTask(day)">
-								<button class="task-add-btn" @click="addTask(day)">
-									+
-								</button>
+												<template v-else>
+													<svg class="check-idle"
+														xmlns="http://www.w3.org/2000/svg"
+														viewBox="0 0 24 24"
+														width="20"
+														height="20">
+														<circle cx="12"
+															cy="12"
+															r="10"
+															fill="none"
+															stroke="currentColor"
+															stroke-width="1.5" />
+													</svg>
+													<svg class="check-hover"
+														xmlns="http://www.w3.org/2000/svg"
+														viewBox="0 0 24 24"
+														width="20"
+														height="20">
+														<circle cx="12"
+															cy="12"
+															r="10"
+															fill="var(--color-primary-element)"
+															stroke="var(--color-primary-element)"
+															stroke-width="1.5" />
+														<path d="M8 12l2.5 2.5L16 9"
+															fill="none"
+															stroke="white"
+															stroke-width="2"
+															stroke-linecap="round"
+															stroke-linejoin="round" />
+													</svg>
+												</template>
+											</button>
+										</div>
+									</template>
+								</draggable>
+								<div class="task-add">
+									<input
+										v-model="newTasks[day]"
+										class="task-input"
+										placeholder="Add task…"
+										@keydown.enter="addTask(day)">
+									<button class="task-add-btn" @click="addTask(day)">
+										+
+									</button>
+								</div>
 							</div>
 						</div>
 					</div>
@@ -874,6 +876,21 @@ onUnmounted(() => {
 
 .bottom-column {
 	grid-row: 2;
+}
+
+.weekend-column {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	background-color: var(--color-border);
+}
+
+.weekend-half {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	background-color: var(--color-main-background);
+	min-height: 0;
 }
 
 .day-header {
@@ -1223,7 +1240,9 @@ onUnmounted(() => {
 		grid-row: auto;
 	}
 
-	.day-column {
+	.day-column,
+	.weekend-column,
+	.weekend-half {
 		min-height: unset;
 	}
 
