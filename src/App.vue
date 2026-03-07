@@ -20,6 +20,12 @@ interface WeekData {
 	days: Record<DayKey, Task[]>
 }
 
+interface CustomColumn {
+	id: string
+	title: string
+	tasks: Task[]
+}
+
 const WEEKDAY_KEYS: DayKey[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
 const WEEKEND_KEYS: DayKey[] = ['saturday', 'sunday']
 const DAY_LABELS: Record<DayKey, string> = {
@@ -46,8 +52,20 @@ const newTasks = ref<Record<DayKey, string>>({
 	sunday: '',
 })
 
+// Custom columns state (persists across weeks)
+const customColumns = ref<CustomColumn[]>([
+	{ id: 'custom_1', title: '', tasks: [] },
+	{ id: 'custom_2', title: 'Someday', tasks: [] },
+	{ id: 'custom_3', title: '', tasks: [] },
+])
+const newCustomTasks = ref<Record<string, string>>({
+	custom_1: '',
+	custom_2: '',
+	custom_3: '',
+})
+
 // Edit dialog state
-const editingTask = ref<{ day: DayKey; taskId: string } | null>(null)
+const editingTask = ref<{ day: DayKey | string; taskId: string } | null>(null)
 const editTitle = ref('')
 const editNotes = ref('')
 const editTitleInput = ref<HTMLInputElement | null>(null)
@@ -184,6 +202,88 @@ function debouncedSave() {
 	}, 300)
 }
 
+// Custom columns persistence (separate from weekly data)
+async function loadCustomColumns() {
+	try {
+		const url = generateUrl('/apps/weekplanner/custom-columns')
+		const response = await axios.get(url)
+		const data = response.data as { columns?: CustomColumn[] }
+		if (data.columns && Array.isArray(data.columns)) {
+			customColumns.value = data.columns.map((col) => ({
+				...col,
+				tasks: (col.tasks || []).map((t) => ({ ...t, notes: t.notes || '' })),
+			}))
+			// Sync newCustomTasks keys
+			const newObj: Record<string, string> = {}
+			for (const col of customColumns.value) {
+				newObj[col.id] = newCustomTasks.value[col.id] || ''
+			}
+			newCustomTasks.value = newObj
+		}
+	} catch {
+		// Keep defaults
+	}
+}
+
+let customSaveTimeout: ReturnType<typeof setTimeout> | null = null
+
+function debouncedSaveCustomColumns() {
+	if (customSaveTimeout) clearTimeout(customSaveTimeout)
+	customSaveTimeout = setTimeout(async () => {
+		customSaveTimeout = null
+		try {
+			const url = generateUrl('/apps/weekplanner/custom-columns')
+			await axios.put(url, { columns: customColumns.value })
+		} catch {
+			// Save failed silently
+		}
+	}, 300)
+}
+
+function addCustomTask(columnId: string) {
+	const title = newCustomTasks.value[columnId]?.trim()
+	if (!title) return
+	const col = customColumns.value.find((c) => c.id === columnId)
+	if (!col) return
+	col.tasks.push({
+		id: crypto.randomUUID(),
+		title,
+		done: false,
+		notes: '',
+	})
+	newCustomTasks.value[columnId] = ''
+	debouncedSaveCustomColumns()
+}
+
+function toggleCustomDone(columnId: string, taskId: string) {
+	const col = customColumns.value.find((c) => c.id === columnId)
+	if (!col) return
+	const task = col.tasks.find((t) => t.id === taskId)
+	if (task) {
+		task.done = !task.done
+		debouncedSaveCustomColumns()
+	}
+}
+
+function deleteCustomTask(columnId: string, taskId: string) {
+	const col = customColumns.value.find((c) => c.id === columnId)
+	if (!col) return
+	col.tasks = col.tasks.filter((t) => t.id !== taskId)
+	debouncedSaveCustomColumns()
+}
+
+function updateColumnTitle(columnId: string, title: string) {
+	const col = customColumns.value.find((c) => c.id === columnId)
+	if (col) {
+		col.title = title
+		debouncedSaveCustomColumns()
+	}
+}
+
+function onCustomDragChange() {
+	debouncedSaveCustomColumns()
+}
+
 function addTask(day: DayKey) {
 	const title = newTasks.value[day].trim()
 	if (!title) return
@@ -210,7 +310,11 @@ function deleteTask(day: DayKey, taskId: string) {
 	debouncedSave()
 }
 
-function openEdit(day: DayKey, task: Task) {
+function isCustomColumn(key: string): boolean {
+	return key.startsWith('custom_')
+}
+
+function openEdit(day: DayKey | string, task: Task) {
 	editingTask.value = { day, taskId: task.id }
 	editTitle.value = task.title
 	editNotes.value = task.notes || ''
@@ -222,11 +326,23 @@ function openEdit(day: DayKey, task: Task) {
 function saveEdit() {
 	if (!editingTask.value) return
 	const { day, taskId } = editingTask.value
-	const task = weekData.value.days[day].find((t) => t.id === taskId)
-	if (task) {
-		task.title = editTitle.value.trim() || task.title
-		task.notes = editNotes.value
-		debouncedSave()
+	if (isCustomColumn(day)) {
+		const col = customColumns.value.find((c) => c.id === day)
+		if (col) {
+			const task = col.tasks.find((t) => t.id === taskId)
+			if (task) {
+				task.title = editTitle.value.trim() || task.title
+				task.notes = editNotes.value
+				debouncedSaveCustomColumns()
+			}
+		}
+	} else {
+		const task = weekData.value.days[day as DayKey].find((t) => t.id === taskId)
+		if (task) {
+			task.title = editTitle.value.trim() || task.title
+			task.notes = editNotes.value
+			debouncedSave()
+		}
 	}
 	editingTask.value = null
 }
@@ -234,12 +350,23 @@ function saveEdit() {
 function deleteEditingTask() {
 	if (!editingTask.value) return
 	const { day, taskId } = editingTask.value
-	deleteTask(day, taskId)
+	if (isCustomColumn(day)) {
+		deleteCustomTask(day, taskId)
+	} else {
+		deleteTask(day as DayKey, taskId)
+	}
 	editingTask.value = null
 }
 
 function onDragChange() {
 	debouncedSave()
+	// Also save custom columns in case a task was dragged out of a custom column
+	debouncedSaveCustomColumns()
+}
+
+function onCustomOrWeekDragChange() {
+	debouncedSave()
+	debouncedSaveCustomColumns()
 }
 
 function prevWeek() {
@@ -308,11 +435,13 @@ onMounted(() => {
 	const { year, week } = getISOWeek(new Date())
 	currentYear.value = year
 	currentWeek.value = week
+	loadCustomColumns()
 })
 
 onUnmounted(() => {
 	stopLongPoll()
 	if (saveTimeout) clearTimeout(saveTimeout)
+	if (customSaveTimeout) clearTimeout(customSaveTimeout)
 })
 </script>
 
@@ -541,6 +670,112 @@ onUnmounted(() => {
 					</div>
 				</div>
 
+				<div class="custom-columns-grid">
+					<div
+						v-for="col in customColumns"
+						:key="col.id"
+						class="custom-column">
+						<div class="day-header custom-column-header">
+							<input
+								class="custom-column-title"
+								:value="col.title"
+								placeholder="Column title…"
+								@input="updateColumnTitle(col.id, ($event.target as HTMLInputElement).value)"
+								@keydown.enter="($event.target as HTMLInputElement).blur()">
+						</div>
+						<div class="day-tasks">
+							<draggable
+								v-model="col.tasks"
+								group="weekGroup"
+								item-key="id"
+								class="task-list"
+								@change="onCustomOrWeekDragChange">
+								<template #item="{ element }: { element: Task }">
+									<div class="task-item" :class="{ done: element.done }">
+										<span class="task-title" @click="openEdit(col.id, element)">
+											{{ element.title }}
+										</span>
+										<svg v-if="element.notes"
+											class="task-notes-icon"
+											xmlns="http://www.w3.org/2000/svg"
+											viewBox="0 0 24 24"
+											width="20"
+											height="20"
+											fill="currentColor">
+											<path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M14,18H6V16H14V18M18,14H6V12H18V14M13,9V3.5L18.5,9H13Z" />
+										</svg>
+										<button
+											class="task-check"
+											:class="{ checked: element.done }"
+											@click.stop="toggleCustomDone(col.id, element.id)">
+											<svg v-if="element.done"
+												xmlns="http://www.w3.org/2000/svg"
+												viewBox="0 0 24 24"
+												width="20"
+												height="20">
+												<circle cx="12"
+													cy="12"
+													r="10"
+													fill="var(--color-primary-element)"
+													stroke="var(--color-primary-element)"
+													stroke-width="1.5" />
+												<path d="M8 12l2.5 2.5L16 9"
+													fill="none"
+													stroke="white"
+													stroke-width="2"
+													stroke-linecap="round"
+													stroke-linejoin="round" />
+											</svg>
+											<template v-else>
+												<svg class="check-idle"
+													xmlns="http://www.w3.org/2000/svg"
+													viewBox="0 0 24 24"
+													width="20"
+													height="20">
+													<circle cx="12"
+														cy="12"
+														r="10"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="1.5" />
+												</svg>
+												<svg class="check-hover"
+													xmlns="http://www.w3.org/2000/svg"
+													viewBox="0 0 24 24"
+													width="20"
+													height="20">
+													<circle cx="12"
+														cy="12"
+														r="10"
+														fill="var(--color-primary-element)"
+														stroke="var(--color-primary-element)"
+														stroke-width="1.5" />
+													<path d="M8 12l2.5 2.5L16 9"
+														fill="none"
+														stroke="white"
+														stroke-width="2"
+														stroke-linecap="round"
+														stroke-linejoin="round" />
+												</svg>
+											</template>
+										</button>
+									</div>
+								</template>
+							</draggable>
+							<div class="task-add">
+								<input
+									v-model="newCustomTasks[col.id]"
+									class="task-input"
+									placeholder="Add task…"
+									@keydown.enter="addCustomTask(col.id)">
+								<button class="task-add-btn" @click="addCustomTask(col.id)">
+									+
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
 				<!-- Edit Task Dialog -->
 				<div v-if="editingTask" class="edit-overlay" @click.self="saveEdit">
 					<div class="edit-dialog" @keydown.escape="saveEdit">
@@ -617,13 +852,13 @@ onUnmounted(() => {
 
 .week-grid {
 	display: grid;
-	grid-template-columns: repeat(5, 1fr) 0.8fr;
+	grid-template-columns: repeat(5, 1fr) 0.6fr;
 	gap: 1px;
 	flex: 1;
 	min-height: 0;
 	background-color: var(--color-border);
 	border: 1px solid var(--color-border);
-	border-radius: 8px;
+	border-radius: 8px 8px 0 0;
 	overflow: hidden;
 }
 
@@ -817,6 +1052,52 @@ onUnmounted(() => {
 	color: var(--color-primary-element-hover);
 }
 
+/* Custom columns */
+.custom-columns-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 1px;
+	min-height: 120px;
+	background-color: var(--color-border);
+	border: 1px solid var(--color-border);
+	border-top: none;
+	border-radius: 0 0 8px 8px;
+	overflow: hidden;
+}
+
+.custom-column {
+	display: flex;
+	flex-direction: column;
+	background-color: var(--color-main-background);
+	min-height: 0;
+}
+
+.custom-column-header {
+	display: flex;
+	align-items: center;
+}
+
+.custom-column-title {
+	width: 100%;
+	border: none;
+	background: transparent;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--color-text-maxcontrast);
+	outline: none;
+	padding: 0;
+	font-family: inherit;
+}
+
+.custom-column-title::placeholder {
+	color: var(--color-text-maxcontrast);
+	opacity: 0.6;
+}
+
+.custom-column-title:focus {
+	color: var(--color-main-text);
+}
+
 /* Edit dialog */
 .edit-overlay {
 	position: fixed;
@@ -961,11 +1242,21 @@ onUnmounted(() => {
 	.week-grid {
 		grid-template-columns: 1fr;
 		overflow: visible;
+		border-radius: 8px;
+	}
+
+	.custom-columns-grid {
+		grid-template-columns: 1fr;
+		border-top: 1px solid var(--color-border);
+		border-radius: 8px;
+		margin-top: 8px;
+		min-height: unset;
 	}
 
 	.day-column,
 	.weekend-column,
-	.weekend-half {
+	.weekend-half,
+	.custom-column {
 		min-height: unset;
 	}
 
