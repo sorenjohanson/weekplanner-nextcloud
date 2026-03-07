@@ -1,26 +1,52 @@
 <?xml version="1.0"?>
+<!--
+  - SPDX-FileCopyrightText: 2026 Sören Johanson
+  - SPDX-License-Identifier: AGPL-3.0-or-later
+-->
 <info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	  xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
-	<id>weekplanner</id>
-	<name>Week Planner</name>
-	<summary>Weekly planner like Tweek</summary>
-	<description>Provides a weekly overview of todos, allowing users to drag and drop between days and tick off tasks as they get done.</description>
-	<version>1.1.0</version>
-	<licence>AGPL-3.0-or-later</licence>
-	<author mail="soeren@soeren.codes" homepage="https://www.soeren.codes">Sören Johanson</author>
-	<namespace>WeekPlanner</namespace>
-	<category>tools</category>
-	<bugs>https://github.com/sorenjohanson/weekplanner-nextcloud</bugs>
-	<dependencies>
-		<nextcloud min-version="31" max-version="32"/>
-	</dependencies>
-	<navigations>
-		<navigation>
-			<id>weekplanner</id>
-			<name>Week Planner</name>
-			<route>weekplanner.page.index</route>
-			<icon>app.svg</icon>
-			<type>link</type>
-		</navigation>
-	</navigations>
+  xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+
+  <id>weekplanner</id>
+  <name>Week Planner</name>
+  <summary>🗓️ A clean weekly planner — drag, drop, and tick off your tasks</summary>
+  <description><![CDATA[**Your week, at a glance — self-hosted and distraction-free!**
+
+A simple weekly planner inspired by [Tweek](https://tweek.so), living right inside your Nextcloud.
+
+- **🗓️ Weekly overview:** See all your tasks laid out across the seven days of the week in one clean view.
+- **🖱️ Drag & drop:** Effortlessly reschedule tasks by dragging them from one day to another — no friction, no hassle.
+- **✅ Tick things off:** Mark tasks as done and get that satisfying sense of progress throughout your week.
+- **🔒 Your data stays yours:** Unlike Tweek, Todoist, or other cloud-based planners, all your tasks remain on your own Nextcloud instance.
+- **📱 Mobile friendly:** The interface works well on smaller screens so you can plan on the go.
+- **🧩 Nextcloud native:** Fully integrated into the Nextcloud navigation — no external accounts, no third-party sync, no tracking.
+  ]]></description>
+
+  <version>1.1.1</version>
+  <licence>AGPL-3.0-or-later</licence>
+
+  <author mail="soeren@soeren.codes" homepage="https://www.soeren.codes">Sören Johanson</author>
+
+  <category>tools</category>
+  <category>organization</category>
+
+  <website>https://github.com/sorenjohanson/weekplanner-nextcloud</website>
+  <bugs>https://github.com/sorenjohanson/weekplanner-nextcloud/discussions/categories/bugs</bugs>
+  <repository type="git">https://github.com/sorenjohanson/weekplanner-nextcloud</repository>
+
+  <screenshot>https://github.com/user-attachments/assets/fe2afd20-9748-48bd-b7b3-b2c4d4943011</screenshot>
+
+  <dependencies>
+    <nextcloud min-version="31" max-version="32"/>
+  </dependencies>
+
+  <navigations>
+    <navigation>
+      <id>weekplanner</id>
+      <name>Week Planner</name>
+      <route>weekplanner.page.index</route>
+      <icon>app-dark.svg</icon>
+      <type>link</type>
+    </navigation>
+  </navigations>
+
 </info>
