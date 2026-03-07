@@ -467,11 +467,10 @@ onUnmounted(() => {
 				</div>
 
 				<div class="week-grid">
-					<!-- Row 1: Weekdays (Mon–Fri) -->
 					<div
 						v-for="day in WEEKDAY_KEYS"
 						:key="day"
-						class="day-column weekday-column">
+						class="day-column">
 						<div class="day-header" :class="{ 'is-today': isToday(day) }">
 							<span class="day-name">{{ DAY_LABELS[day] }}</span>
 							<span class="day-date">{{ formatDate(day) }}</span>
@@ -568,112 +567,7 @@ onUnmounted(() => {
 						</div>
 					</div>
 
-					<!-- Row 2: Custom columns + Weekend (Sat & Sun) -->
-					<div
-						v-for="col in customColumns"
-						:key="col.id"
-						class="day-column bottom-column custom-column">
-						<div class="day-header custom-column-header">
-							<input
-								class="custom-column-title"
-								:value="col.title"
-								placeholder="Column title…"
-								@input="updateColumnTitle(col.id, ($event.target as HTMLInputElement).value)"
-								@keydown.enter="($event.target as HTMLInputElement).blur()">
-						</div>
-						<div class="day-tasks">
-							<draggable
-								v-model="col.tasks"
-								group="weekGroup"
-								item-key="id"
-								class="task-list"
-								@change="onCustomOrWeekDragChange">
-								<template #item="{ element }: { element: Task }">
-									<div class="task-item" :class="{ done: element.done }">
-										<span class="task-title" @click="openEdit(col.id, element)">
-											{{ element.title }}
-										</span>
-										<svg v-if="element.notes"
-											class="task-notes-icon"
-											xmlns="http://www.w3.org/2000/svg"
-											viewBox="0 0 24 24"
-											width="20"
-											height="20"
-											fill="currentColor">
-											<path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M14,18H6V16H14V18M18,14H6V12H18V14M13,9V3.5L18.5,9H13Z" />
-										</svg>
-										<button
-											class="task-check"
-											:class="{ checked: element.done }"
-											@click.stop="toggleCustomDone(col.id, element.id)">
-											<svg v-if="element.done"
-												xmlns="http://www.w3.org/2000/svg"
-												viewBox="0 0 24 24"
-												width="20"
-												height="20">
-												<circle cx="12"
-													cy="12"
-													r="10"
-													fill="var(--color-primary-element)"
-													stroke="var(--color-primary-element)"
-													stroke-width="1.5" />
-												<path d="M8 12l2.5 2.5L16 9"
-													fill="none"
-													stroke="white"
-													stroke-width="2"
-													stroke-linecap="round"
-													stroke-linejoin="round" />
-											</svg>
-											<template v-else>
-												<svg class="check-idle"
-													xmlns="http://www.w3.org/2000/svg"
-													viewBox="0 0 24 24"
-													width="20"
-													height="20">
-													<circle cx="12"
-														cy="12"
-														r="10"
-														fill="none"
-														stroke="currentColor"
-														stroke-width="1.5" />
-												</svg>
-												<svg class="check-hover"
-													xmlns="http://www.w3.org/2000/svg"
-													viewBox="0 0 24 24"
-													width="20"
-													height="20">
-													<circle cx="12"
-														cy="12"
-														r="10"
-														fill="var(--color-primary-element)"
-														stroke="var(--color-primary-element)"
-														stroke-width="1.5" />
-													<path d="M8 12l2.5 2.5L16 9"
-														fill="none"
-														stroke="white"
-														stroke-width="2"
-														stroke-linecap="round"
-														stroke-linejoin="round" />
-												</svg>
-											</template>
-										</button>
-									</div>
-								</template>
-							</draggable>
-							<div class="task-add">
-								<input
-									v-model="newCustomTasks[col.id]"
-									class="task-input"
-									placeholder="Add task…"
-									@keydown.enter="addCustomTask(col.id)">
-								<button class="task-add-btn" @click="addCustomTask(col.id)">
-									+
-								</button>
-							</div>
-						</div>
-					</div>
-
-					<div class="weekend-column bottom-column">
+					<div class="weekend-column">
 						<div
 							v-for="day in WEEKEND_KEYS"
 							:key="day"
@@ -776,6 +670,112 @@ onUnmounted(() => {
 					</div>
 				</div>
 
+				<div class="custom-columns-grid">
+					<div
+						v-for="col in customColumns"
+						:key="col.id"
+						class="day-column custom-column">
+						<div class="day-header custom-column-header">
+							<input
+								class="custom-column-title"
+								:value="col.title"
+								placeholder="Column title…"
+								@input="updateColumnTitle(col.id, ($event.target as HTMLInputElement).value)"
+								@keydown.enter="($event.target as HTMLInputElement).blur()">
+						</div>
+						<div class="day-tasks">
+							<draggable
+								v-model="col.tasks"
+								group="weekGroup"
+								item-key="id"
+								class="task-list"
+								@change="onCustomOrWeekDragChange">
+								<template #item="{ element }: { element: Task }">
+									<div class="task-item" :class="{ done: element.done }">
+										<span class="task-title" @click="openEdit(col.id, element)">
+											{{ element.title }}
+										</span>
+										<svg v-if="element.notes"
+											class="task-notes-icon"
+											xmlns="http://www.w3.org/2000/svg"
+											viewBox="0 0 24 24"
+											width="20"
+											height="20"
+											fill="currentColor">
+											<path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M14,18H6V16H14V18M18,14H6V12H18V14M13,9V3.5L18.5,9H13Z" />
+										</svg>
+										<button
+											class="task-check"
+											:class="{ checked: element.done }"
+											@click.stop="toggleCustomDone(col.id, element.id)">
+											<svg v-if="element.done"
+												xmlns="http://www.w3.org/2000/svg"
+												viewBox="0 0 24 24"
+												width="20"
+												height="20">
+												<circle cx="12"
+													cy="12"
+													r="10"
+													fill="var(--color-primary-element)"
+													stroke="var(--color-primary-element)"
+													stroke-width="1.5" />
+												<path d="M8 12l2.5 2.5L16 9"
+													fill="none"
+													stroke="white"
+													stroke-width="2"
+													stroke-linecap="round"
+													stroke-linejoin="round" />
+											</svg>
+											<template v-else>
+												<svg class="check-idle"
+													xmlns="http://www.w3.org/2000/svg"
+													viewBox="0 0 24 24"
+													width="20"
+													height="20">
+													<circle cx="12"
+														cy="12"
+														r="10"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="1.5" />
+												</svg>
+												<svg class="check-hover"
+													xmlns="http://www.w3.org/2000/svg"
+													viewBox="0 0 24 24"
+													width="20"
+													height="20">
+													<circle cx="12"
+														cy="12"
+														r="10"
+														fill="var(--color-primary-element)"
+														stroke="var(--color-primary-element)"
+														stroke-width="1.5" />
+													<path d="M8 12l2.5 2.5L16 9"
+														fill="none"
+														stroke="white"
+														stroke-width="2"
+														stroke-linecap="round"
+														stroke-linejoin="round" />
+												</svg>
+											</template>
+										</button>
+									</div>
+								</template>
+							</draggable>
+							<div class="task-add">
+								<input
+									v-model="newCustomTasks[col.id]"
+									class="task-input"
+									placeholder="Add task…"
+									@keydown.enter="addCustomTask(col.id)">
+								<button class="task-add-btn" @click="addCustomTask(col.id)">
+									+
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
 				<!-- Edit Task Dialog -->
 				<div v-if="editingTask" class="edit-overlay" @click.self="saveEdit">
 					<div class="edit-dialog" @keydown.escape="saveEdit">
@@ -852,14 +852,13 @@ onUnmounted(() => {
 
 .week-grid {
 	display: grid;
-	grid-template-columns: repeat(5, 1fr);
-	grid-template-rows: 3fr 1fr;
+	grid-template-columns: repeat(5, 1fr) 0.8fr;
 	gap: 1px;
 	flex: 1;
 	min-height: 0;
 	background-color: var(--color-border);
 	border: 1px solid var(--color-border);
-	border-radius: 8px;
+	border-radius: 8px 8px 0 0;
 	overflow: hidden;
 }
 
@@ -868,14 +867,6 @@ onUnmounted(() => {
 	flex-direction: column;
 	background-color: var(--color-main-background);
 	min-height: 0;
-}
-
-.weekday-column {
-	grid-row: 1;
-}
-
-.bottom-column {
-	grid-row: 2;
 }
 
 .weekend-column {
@@ -1062,6 +1053,18 @@ onUnmounted(() => {
 }
 
 /* Custom columns */
+.custom-columns-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 1px;
+	min-height: 120px;
+	background-color: var(--color-border);
+	border: 1px solid var(--color-border);
+	border-top: none;
+	border-radius: 0 0 8px 8px;
+	overflow: hidden;
+}
+
 .custom-column-header {
 	display: flex;
 	align-items: center;
@@ -1231,18 +1234,22 @@ onUnmounted(() => {
 
 	.week-grid {
 		grid-template-columns: 1fr;
-		grid-template-rows: none;
 		overflow: visible;
+		border-radius: 8px;
 	}
 
-	.weekday-column,
-	.bottom-column {
-		grid-row: auto;
+	.custom-columns-grid {
+		grid-template-columns: 1fr;
+		border-top: 1px solid var(--color-border);
+		border-radius: 8px;
+		margin-top: 8px;
+		min-height: unset;
 	}
 
 	.day-column,
 	.weekend-column,
-	.weekend-half {
+	.weekend-half,
+	.custom-column {
 		min-height: unset;
 	}
 
