@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <!--
-  - SPDX-FileCopyrightText: 2024-2026 Sören Johanson
+  - SPDX-FileCopyrightText: 2026 Sören Johanson
   - SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 <info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -21,7 +21,7 @@ A simple weekly planner inspired by [Tweek](https://tweek.so), living right insi
 - **🧩 Nextcloud native:** Fully integrated into the Nextcloud navigation — no external accounts, no third-party sync, no tracking.
   ]]></description>
 
-  <version>1.1.0</version>
+  <version>1.1.1</version>
   <licence>AGPL-3.0-or-later</licence>
 
   <author mail="soeren@soeren.codes" homepage="https://www.soeren.codes">Sören Johanson</author>
@@ -30,7 +30,7 @@ A simple weekly planner inspired by [Tweek](https://tweek.so), living right insi
   <category>organization</category>
 
   <website>https://github.com/sorenjohanson/weekplanner-nextcloud</website>
-  <bugs>https://github.com/sorenjohanson/weekplanner-nextcloud/issues</bugs>
+  <bugs>https://github.com/sorenjohanson/weekplanner-nextcloud/discussions/categories/bugs</bugs>
   <repository type="git">https://github.com/sorenjohanson/weekplanner-nextcloud</repository>
 
   <screenshot>https://github.com/user-attachments/assets/fe2afd20-9748-48bd-b7b3-b2c4d4943011</screenshot>
@@ -44,7 +44,7 @@ A simple weekly planner inspired by [Tweek](https://tweek.so), living right insi
       <id>weekplanner</id>
       <name>Week Planner</name>
       <route>weekplanner.page.index</route>
-      <icon>app.svg</icon>
+      <icon>app-dark.svg</icon>
       <type>link</type>
     </navigation>
   </navigations>
