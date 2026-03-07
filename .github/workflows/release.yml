@@ -43,6 +43,7 @@ jobs:
   release:
     needs: [lint-info-xml, lint-eslint, lint-stylelint, lint-php, lint-php-cs, node-build, psalm]
     runs-on: ubuntu-latest
+    environment: Production
     permissions:
       contents: write
     env:
