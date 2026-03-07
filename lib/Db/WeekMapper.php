@@ -29,10 +29,11 @@ class WeekMapper extends QBMapper {
 			->andWhere($qb->expr()->eq('week', $qb->createNamedParameter($week, IQueryBuilder::PARAM_INT)));
 
 		$result = $qb->executeQuery();
+		/** @var array{updated_at: int}|false $row */
 		$row = $result->fetch();
 		$result->closeCursor();
 
-		return $row !== false ? (int)$row['updated_at'] : 0;
+		return $row !== false ? $row['updated_at'] : 0;
 	}
 
 	public function findByUserAndWeek(string $userId, int $year, int $week): ?Week {

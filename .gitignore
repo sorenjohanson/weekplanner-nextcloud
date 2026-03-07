@@ -3,6 +3,8 @@
 
 /vendor/
 /vendor-bin/*/vendor/
+/vendor-bin/*/composer.lock
+/composer.lock
 
 /.php-cs-fixer.cache
 /tests/.phpunit.cache
