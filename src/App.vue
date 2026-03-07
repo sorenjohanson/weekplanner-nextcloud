@@ -280,10 +280,6 @@ function updateColumnTitle(columnId: string, title: string) {
 	}
 }
 
-function onCustomDragChange() {
-	debouncedSaveCustomColumns()
-}
-
 function addTask(day: DayKey) {
 	const title = newTasks.value[day].trim()
 	if (!title) return

@@ -29,6 +29,7 @@ class WeekMapper extends QBMapper {
 			->andWhere($qb->expr()->eq('week', $qb->createNamedParameter($week, IQueryBuilder::PARAM_INT)));
 
 		$result = $qb->executeQuery();
+		/** @var array{updated_at: int}|false $row */
 		$row = $result->fetch();
 		$result->closeCursor();
 
