@@ -78,8 +78,8 @@ class CustomColumnsController extends Controller {
 	private function emptyCustomColumns(): array {
 		return [
 			'columns' => [
-				['id' => 'custom_1', 'title' => '', 'tasks' => []],
-				['id' => 'custom_2', 'title' => 'Someday', 'tasks' => []],
+				['id' => 'custom_1', 'title' => 'Someday', 'tasks' => []],
+				['id' => 'custom_2', 'title' => '', 'tasks' => []],
 				['id' => 'custom_3', 'title' => '', 'tasks' => []],
 			],
 		];
