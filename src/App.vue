@@ -1055,7 +1055,7 @@ onUnmounted(() => {
 /* Custom columns */
 .custom-columns-grid {
 	display: grid;
-	grid-template-columns: repeat(3, 1fr);
+	grid-template-columns: repeat(5, 1fr) 0.8fr;
 	gap: 1px;
 	height: 30vh;
 	min-height: 200px;
@@ -1065,6 +1065,10 @@ onUnmounted(() => {
 	border-top: none;
 	border-radius: 0 0 8px 8px;
 	overflow: hidden;
+}
+
+.custom-columns-grid .custom-column {
+	grid-column: span 2;
 }
 
 .custom-column-header {
@@ -1249,7 +1253,8 @@ onUnmounted(() => {
 		min-height: unset;
 	}
 
-	.custom-column {
+	.custom-columns-grid .custom-column {
+		grid-column: span 1;
 		min-height: 80px;
 	}
 
