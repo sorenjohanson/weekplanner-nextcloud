@@ -33,7 +33,7 @@ A simple weekly planner inspired by [Tweek](https://tweek.so), living right insi
   <bugs>https://github.com/sorenjohanson/weekplanner-nextcloud/discussions/categories/bugs</bugs>
   <repository type="git">https://github.com/sorenjohanson/weekplanner-nextcloud</repository>
 
-  <screenshot>https://github.com/user-attachments/assets/fe2afd20-9748-48bd-b7b3-b2c4d4943011</screenshot>
+  <screenshot>https://raw.githubusercontent.com/sorenjohanson/weekplanner-nextcloud/main/img/weekplanner_promo_image.png</screenshot>
 
   <dependencies>
     <nextcloud min-version="31" max-version="32"/>
