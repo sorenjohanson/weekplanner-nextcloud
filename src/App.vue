@@ -1228,6 +1228,13 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
+	.weekplanner {
+		height: auto;
+		min-height: 100%;
+		overflow-y: auto;
+		-webkit-overflow-scrolling: touch;
+	}
+
 	.weekplanner-header {
 		flex-direction: column;
 		align-items: flex-start;
@@ -1235,14 +1242,31 @@ onUnmounted(() => {
 	}
 
 	.week-grid {
-		grid-template-columns: repeat(5, minmax(140px, 1fr)) minmax(120px, 0.8fr);
-		overflow-x: auto;
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+		flex: none;
+		overflow: visible;
 		border-radius: 8px 8px 0 0;
-		flex: 1;
+	}
+
+	.week-grid .day-column {
+		min-height: auto;
+	}
+
+	.week-grid .weekend-column {
+		gap: 0;
+	}
+
+	.week-grid .task-list {
+		overflow-y: visible;
+		min-height: 20px;
 	}
 
 	.custom-columns-grid {
-		grid-template-columns: 1fr;
+		display: flex;
+		flex-direction: column;
+		gap: 0;
 		border-top: 1px solid var(--color-border);
 		border-radius: 0 0 8px 8px;
 		height: auto;
@@ -1251,7 +1275,22 @@ onUnmounted(() => {
 
 	.custom-columns-grid .custom-column {
 		grid-column: span 1;
-		min-height: 80px;
+		min-height: auto;
+	}
+
+	.task-check {
+		width: 32px;
+		height: 32px;
+		min-width: 32px;
+		min-height: 32px;
+	}
+
+	.task-add {
+		border-bottom: 1px solid var(--color-border);
+	}
+
+	.task-item {
+		padding: 6px 12px;
 	}
 
 	.edit-dialog {
