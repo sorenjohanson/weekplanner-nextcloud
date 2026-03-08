@@ -20,12 +20,12 @@ A simple weekly planner inspired by [Tweek](https://tweek.so), living right insi
 - **📱 Mobile friendly:** The interface works well on smaller screens so you can plan on the go.
 - **🧩 Nextcloud native:** Fully integrated into the Nextcloud navigation — no external accounts, no third-party sync, no tracking.
   ]]></description>
-
   <version>1.2.3</version>
   <licence>AGPL-3.0-or-later</licence>
 
   <author mail="soeren@soeren.codes" homepage="https://www.soeren.codes">Sören Johanson</author>
-
+  <namespace>WeekPlanner</namespace>
+  
   <category>tools</category>
   <category>organization</category>
 
