@@ -18,8 +18,8 @@ class Version1001Date20260307120000 extends SimpleMigrationStep {
 	public function changeSchema(IOutput $output, Closure $schemaClosure, array $options): ?ISchemaWrapper {
 		$schema = $schemaClosure();
 
-		if (!$schema->hasTable('weekplanner_custom_columns')) {
-			$table = $schema->createTable('weekplanner_custom_columns');
+		if (!$schema->hasTable('weekplanner_custom_cols')) {
+			$table = $schema->createTable('weekplanner_custom_cols');
 			$table->addColumn('id', Types::BIGINT, [
 				'autoincrement' => true,
 				'notnull' => true,
@@ -37,7 +37,7 @@ class Version1001Date20260307120000 extends SimpleMigrationStep {
 				'notnull' => true,
 				'default' => 0,
 			]);
-			$table->setPrimaryKey(['id']);
+			$table->setPrimaryKey(['id'], 'weekplanner_custom_cols_pkey');
 			$table->addUniqueIndex(['user_id'], 'weekplanner_custom_cols_user');
 		}
 

@@ -21,7 +21,7 @@ A simple weekly planner inspired by [Tweek](https://tweek.so), living right insi
 - **🧩 Nextcloud native:** Fully integrated into the Nextcloud navigation — no external accounts, no third-party sync, no tracking.
   ]]></description>
 
-  <version>1.1.1</version>
+  <version>1.1.2</version>
   <licence>AGPL-3.0-or-later</licence>
 
   <author mail="soeren@soeren.codes" homepage="https://www.soeren.codes">Sören Johanson</author>
