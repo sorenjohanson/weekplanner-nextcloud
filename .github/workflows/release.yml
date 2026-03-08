@@ -208,13 +208,18 @@ jobs:
           NEXTCLOUD_APPSTORE_TOKEN: ${{ secrets.NEXTCLOUD_APPSTORE_TOKEN }}
 
       - name: Publish to Nextcloud App Store
-        if: steps.appstore.outputs.available == 'true'
+        if: steps.signing.outputs.available == 'true' && steps.appstore.outputs.available == 'true'
         env:
           NEXTCLOUD_APPSTORE_TOKEN: ${{ secrets.NEXTCLOUD_APPSTORE_TOKEN }}
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
         run: |
+          TARBALL="/tmp/${{ env.APP_ID }}-v${{ steps.version.outputs.version }}.tar.gz"
           DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version }}/${{ env.APP_ID }}-v${{ steps.version.outputs.version }}.tar.gz"
+          echo "$APP_PRIVATE_KEY" > /tmp/app.key
+          SIGNATURE=$(openssl dgst -sha512 -sign /tmp/app.key "$TARBALL" | openssl base64 -A)
+          rm -f /tmp/app.key
           curl -X POST \
             https://apps.nextcloud.com/api/v1/apps/releases \
             -H "Authorization: Token $NEXTCLOUD_APPSTORE_TOKEN" \
             -H "Content-Type: application/json" \
-            -d "{\"download\": \"$DOWNLOAD_URL\", \"nightly\": false}"
+            -d "{\"download\": \"$DOWNLOAD_URL\", \"signature\": \"$SIGNATURE\", \"nightly\": false}"
