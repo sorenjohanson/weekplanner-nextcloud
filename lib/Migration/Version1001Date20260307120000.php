@@ -37,7 +37,7 @@ class Version1001Date20260307120000 extends SimpleMigrationStep {
 				'notnull' => true,
 				'default' => 0,
 			]);
-			$table->setPrimaryKey(['id'], 'weekplanner_custom_cols_pkey');
+			$table->setPrimaryKey(['id']);
 			$table->addUniqueIndex(['user_id'], 'weekplanner_custom_cols_user');
 		}
 

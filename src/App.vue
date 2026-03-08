@@ -179,7 +179,7 @@ async function loadWeek() {
 
 let saveTimeout: ReturnType<typeof setTimeout> | null = null
 let isSaving = false
-let knownUpdatedAt = 0
+let knownUpdatedAt = Math.floor(Date.now() / 1000)
 let pollAbortController: AbortController | null = null
 let shouldPoll = false
 
@@ -421,7 +421,7 @@ async function longPoll() {
 
 watch([currentYear, currentWeek], async () => {
 	stopLongPoll()
-	knownUpdatedAt = 0
+	knownUpdatedAt = Math.floor(Date.now() / 1000)
 	await loadWeek()
 	shouldPoll = true
 	longPoll()
