@@ -1285,6 +1285,10 @@ onUnmounted(() => {
 		min-height: 32px;
 	}
 
+	.task-add {
+		border-bottom: 1px solid var(--color-border);
+	}
+
 	.task-item {
 		padding: 6px 12px;
 	}
