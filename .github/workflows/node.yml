@@ -83,7 +83,7 @@ jobs:
           PUPPETEER_SKIP_DOWNLOAD: true
         run: |
           pnpm install --frozen-lockfile
-          pnpm run build --if-present
+          pnpm run --if-present build
 
       - name: Check webpack build changes
         run: |
