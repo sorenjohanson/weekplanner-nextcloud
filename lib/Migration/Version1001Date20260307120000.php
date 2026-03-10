@@ -18,8 +18,8 @@ class Version1001Date20260307120000 extends SimpleMigrationStep {
 	public function changeSchema(IOutput $output, Closure $schemaClosure, array $options): ?ISchemaWrapper {
 		$schema = $schemaClosure();
 
-		if (!$schema->hasTable('weekplanner_custom_cols')) {
-			$table = $schema->createTable('weekplanner_custom_cols');
+		if (!$schema->hasTable('weekplanner_cc')) {
+			$table = $schema->createTable('weekplanner_cc');
 			$table->addColumn('id', Types::BIGINT, [
 				'autoincrement' => true,
 				'notnull' => true,

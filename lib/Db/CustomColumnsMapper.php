@@ -16,7 +16,7 @@ class CustomColumnsMapper extends QBMapper {
 	 * @psalm-suppress PossiblyUnusedMethod
 	 */
 	public function __construct(IDBConnection $db) {
-		parent::__construct($db, 'weekplanner_custom_cols', CustomColumns::class);
+		parent::__construct($db, 'weekplanner_cc', CustomColumns::class);
 	}
 
 	public function findByUser(string $userId): ?CustomColumns {
