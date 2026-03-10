@@ -116,7 +116,6 @@ jobs:
           cp -r img /tmp/${{ env.APP_ID }}/
           cp -r templates /tmp/${{ env.APP_ID }}/
           cp LICENSE /tmp/${{ env.APP_ID }}/
-          cp CHANGELOG.md /tmp/${{ env.APP_ID }}/
 
       - name: Check signing secrets
         id: signing
