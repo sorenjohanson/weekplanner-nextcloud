@@ -44,25 +44,28 @@ jobs:
           fallbackNode: '^20'
           fallbackNpm: '^10'
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4
+        with:
+          version: 10
+
       - name: Set up node ${{ steps.versions.outputs.nodeVersion }}
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ steps.versions.outputs.nodeVersion }}
-
-      - name: Set up npm ${{ steps.versions.outputs.npmVersion }}
-        run: npm i -g 'npm@${{ steps.versions.outputs.npmVersion }}'
+          cache: 'pnpm'
 
       - name: Fix npm audit
         id: npm-audit
         uses: nextcloud-libraries/npm-audit-action@1b1728b2b4a7a78d69de65608efcf4db0e3e42d0 # v0.2.0
 
-      - name: Run npm ci and npm run build
+      - name: Run pnpm install and build
         if: steps.checkout.outcome == 'success'
         env:
           CYPRESS_INSTALL_BINARY: 0
         run: |
-          npm ci
-          npm run build --if-present
+          pnpm install --frozen-lockfile
+          pnpm run --if-present build
 
       - name: Create Pull Request
         if: steps.checkout.outcome == 'success'
