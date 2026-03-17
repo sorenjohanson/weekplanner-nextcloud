@@ -7,6 +7,7 @@ namespace OCA\WeekPlanner\Controller;
 use OCA\WeekPlanner\AppInfo\Application;
 use OCA\WeekPlanner\Db\Week;
 use OCA\WeekPlanner\Db\WeekMapper;
+use OCA\WeekPlanner\Service\NotifyPushService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\FrontpageRoute;
@@ -23,6 +24,7 @@ class WeekController extends Controller {
 		IRequest $request,
 		private WeekMapper $weekMapper,
 		private IUserSession $userSession,
+		private NotifyPushService $notifyPush,
 	) {
 		parent::__construct(Application::APP_ID, $request);
 	}
@@ -73,6 +75,8 @@ class WeekController extends Controller {
 			$entity->setUpdatedAt($now);
 			$this->weekMapper->insert($entity);
 		}
+
+		$this->notifyPush->notifyWeekUpdate($userId, $year, $week);
 
 		return new JSONResponse(['status' => 'ok']);
 	}

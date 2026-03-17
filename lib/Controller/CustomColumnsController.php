@@ -7,6 +7,7 @@ namespace OCA\WeekPlanner\Controller;
 use OCA\WeekPlanner\AppInfo\Application;
 use OCA\WeekPlanner\Db\CustomColumns;
 use OCA\WeekPlanner\Db\CustomColumnsMapper;
+use OCA\WeekPlanner\Service\NotifyPushService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\FrontpageRoute;
@@ -23,6 +24,7 @@ class CustomColumnsController extends Controller {
 		IRequest $request,
 		private CustomColumnsMapper $mapper,
 		private IUserSession $userSession,
+		private NotifyPushService $notifyPush,
 	) {
 		parent::__construct(Application::APP_ID, $request);
 	}
@@ -72,7 +74,43 @@ class CustomColumnsController extends Controller {
 			$this->mapper->insert($entity);
 		}
 
+		$this->notifyPush->notifyCustomColumnsUpdate($userId);
+
 		return new JSONResponse(['status' => 'ok']);
+	}
+
+	#[NoAdminRequired]
+	#[FrontpageRoute(verb: 'GET', url: '/custom-columns/poll')]
+	public function poll(int $since = 0): JSONResponse {
+		$user = $this->userSession->getUser();
+		if ($user === null) {
+			return new JSONResponse(['error' => 'Not logged in'], Http::STATUS_UNAUTHORIZED);
+		}
+
+		session_write_close();
+		set_time_limit(60);
+
+		$userId = $user->getUID();
+		$start = time();
+
+		while (time() - $start < 30) {
+			$updatedAt = $this->mapper->getUpdatedAt($userId);
+
+			if ($updatedAt > $since) {
+				$entity = $this->mapper->findByUser($userId);
+				/** @psalm-suppress MixedAssignment */
+				$data = $entity !== null ? (json_decode($entity->getData(), true) ?: $this->emptyCustomColumns()) : $this->emptyCustomColumns();
+				return new JSONResponse([
+					'changed' => true,
+					'updatedAt' => $updatedAt,
+					'data' => $data,
+				]);
+			}
+
+			sleep(2);
+		}
+
+		return new JSONResponse(['changed' => false, 'updatedAt' => $since]);
 	}
 
 	private function emptyCustomColumns(): array {
