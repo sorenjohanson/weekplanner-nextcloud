@@ -10,6 +10,13 @@ until php occ status --output=json 2>/dev/null | grep -q '"installed":true'; do
   sleep 2
 done
 
+# Configure Redis for file locking
+php occ config:system:set memcache.locking --value '\OC\Memcache\Redis' || true
+
+# Ensure www-data owns the custom_apps directory so the App Store can
+# install / update apps alongside the bind-mounted weekplanner app.
+chown www-data:www-data /var/www/html/custom_apps
+
 php occ app:enable weekplanner || true
 echo "weekplanner app enabled"
 
