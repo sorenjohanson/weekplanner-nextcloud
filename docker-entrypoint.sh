@@ -13,12 +13,32 @@ done
 # Configure Redis for file locking
 php occ config:system:set memcache.locking --value '\OC\Memcache\Redis' || true
 
+# Allow the notify_push container (and Docker network) to reach Nextcloud
+php occ config:system:set trusted_proxies 0 --value='172.16.0.0/12' || true
+
 # Ensure www-data owns the custom_apps directory so the App Store can
 # install / update apps alongside the bind-mounted weekplanner app.
 chown www-data:www-data /var/www/html/custom_apps
 
+# Install and enable notify_push from the App Store
+php occ app:install notify_push || true
+php occ app:enable notify_push || true
+
+# The App Store download does not preserve the execute bit
+chmod +x /var/www/html/custom_apps/notify_push/bin/x86_64/notify_push || true
+
 php occ app:enable weekplanner || true
 echo "weekplanner app enabled"
+
+# Wait for the notify_push sidecar to start listening, then register it.
+(
+  echo "Waiting for notify_push daemon to become reachable…"
+  until nc -z notify_push 7867 2>/dev/null; do
+    sleep 2
+  done
+  php occ notify_push:setup http://notify_push:7867 || true
+  echo "notify_push setup complete"
+) &
 
 # Keep the container alive by waiting on Apache
 wait

@@ -15,7 +15,35 @@ services:
       - NEXTCLOUD_ADMIN_USER=admin
       - NEXTCLOUD_ADMIN_PASSWORD=admin
       - REDIS_HOST=redis
+      - NEXTCLOUD_TRUSTED_DOMAINS=localhost
+      - OVERWRITEPROTOCOL=http
     depends_on:
+      - redis
+    restart: unless-stopped
+
+  notify_push:
+    image: nextcloud:32
+    entrypoint: /bin/sh
+    # Wait for the notify_push binary to appear (installed into
+    # custom_apps by the nextcloud container), then run it.
+    command:
+      - -c
+      - |
+        echo "Waiting for notify_push binary…"
+        while [ ! -f /var/www/html/custom_apps/notify_push/bin/x86_64/notify_push ]; do
+          sleep 2
+        done
+        chmod +x /var/www/html/custom_apps/notify_push/bin/x86_64/notify_push
+        echo "Starting notify_push daemon…"
+        exec /var/www/html/custom_apps/notify_push/bin/x86_64/notify_push /var/www/html/config/config.php
+    user: www-data
+    environment:
+      - PORT=7867
+      - NEXTCLOUD_URL=http://nextcloud
+    volumes:
+      - nextcloud_data:/var/www/html
+    depends_on:
+      - nextcloud
       - redis
     restart: unless-stopped
 
