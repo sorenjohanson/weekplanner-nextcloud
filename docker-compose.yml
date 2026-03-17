@@ -1,6 +1,7 @@
 services:
   nextcloud:
     image: nextcloud:32
+    entrypoint: /custom-entrypoint.sh
     ports:
       - "8080:80"
     volumes:
@@ -8,6 +9,7 @@ services:
       # Mount the app source directly into Nextcloud's custom_apps directory.
       # Any local changes (including `pnpm run build`) are reflected immediately.
       - .:/var/www/html/custom_apps/weekplanner
+      - ./docker-entrypoint.sh:/custom-entrypoint.sh:ro
     environment:
       - SQLITE_DATABASE=nextcloud
       - NEXTCLOUD_ADMIN_USER=admin
