@@ -522,7 +522,6 @@ async function trySetupNotifyPush(): Promise<boolean> {
 		})
 
 		if (!available) {
-			console.log('notify_push not available on the server!')
 			return false
 		}
 
