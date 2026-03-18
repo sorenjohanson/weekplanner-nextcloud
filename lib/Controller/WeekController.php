@@ -110,7 +110,7 @@ class WeekController extends Controller {
 				]);
 			}
 
-			sleep(1);
+			sleep(3);
 		}
 
 		return new JSONResponse(['changed' => false, 'updatedAt' => $since]);

@@ -108,7 +108,7 @@ class CustomColumnsController extends Controller {
 				]);
 			}
 
-			sleep(2);
+			sleep(3);
 		}
 
 		return new JSONResponse(['changed' => false, 'updatedAt' => $since]);
