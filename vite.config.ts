@@ -9,12 +9,5 @@ export default createAppConfig(
 		createEmptyCSSEntryPoints: true,
 		extractLicenseInformation: true,
 		thirdPartyLicense: false,
-		config: {
-			build: {
-				rollupOptions: {
-					external: ['@nextcloud/notify_push'],
-				},
-			},
-		},
 	},
 )
