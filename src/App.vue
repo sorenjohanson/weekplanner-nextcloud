@@ -39,8 +39,10 @@ const DAY_LABELS: Record<DayKey, string> = {
 }
 const ALL_KEYS: DayKey[] = [...WEEKDAY_KEYS, ...WEEKEND_KEYS]
 
-const currentYear = ref(0)
-const currentWeek = ref(0)
+// Initialise to actual values so the watcher only fires on navigation, not on mount.
+const { year: _initYear, week: _initWeek } = getISOWeek(new Date())
+const currentYear = ref(_initYear)
+const currentWeek = ref(_initWeek)
 const weekData = ref<WeekData>(emptyWeek())
 const newTasks = ref<Record<DayKey, string>>({
 	monday: '',
@@ -419,13 +421,13 @@ async function longPollWeek() {
 			{ signal: controller.signal, timeout: 35_000 },
 		)
 		if (response.data.changed) {
-			knownWeekUpdatedAt = response.data.updatedAt
 			if (saveTimeout === null && !isSaving && !editingTask.value) {
+				knownWeekUpdatedAt = response.data.updatedAt
 				weekData.value = normalizeWeekData(response.data.data)
 			}
 		}
 	} catch {
-		if (weekPollAbortController?.signal.aborted) return
+		if (controller.signal.aborted) return
 		await new Promise((resolve) => setTimeout(resolve, 5_000))
 	}
 	longPollWeek()
@@ -450,13 +452,13 @@ async function longPollCustom() {
 			{ signal: controller.signal, timeout: 35_000 },
 		)
 		if (response.data.changed) {
-			knownCustomUpdatedAt = response.data.updatedAt
 			if (customSaveTimeout === null && !customSaveInProgress && !editingTask.value) {
+				knownCustomUpdatedAt = response.data.updatedAt
 				applyCustomColumnsData(response.data.data)
 			}
 		}
 	} catch {
-		if (customPollAbortController?.signal.aborted) return
+		if (controller.signal.aborted) return
 		await new Promise((resolve) => setTimeout(resolve, 5_000))
 	}
 	longPollCustom()
@@ -496,10 +498,10 @@ function stopAllPolling() {
 async function trySetupNotifyPush(): Promise<boolean> {
 	try {
 		const mod = await import('@nextcloud/notify_push')
-		const listen = mod.listen as ((event: string, handler: (type: string, body?: Record<string, unknown>) => void) => void) | undefined
+		const listen = mod.listen as ((event: string, handler: (type: string, body?: Record<string, unknown>) => void) => boolean) | undefined
 		if (typeof listen !== 'function') return false
 
-		listen('weekplanner_week_update', (_type, body) => {
+		const available = listen('weekplanner_week_update', (_type, body) => {
 			if (!body) return
 			if (Number(body.year) === currentYear.value && Number(body.week) === currentWeek.value) {
 				if (saveTimeout === null && !isSaving && !editingTask.value) {
@@ -507,6 +509,8 @@ async function trySetupNotifyPush(): Promise<boolean> {
 				}
 			}
 		})
+
+		if (!available) return false
 
 		listen('weekplanner_customcolumns_update', () => {
 			if (customSaveTimeout === null && !customSaveInProgress && !editingTask.value) {
@@ -535,10 +539,7 @@ watch([currentYear, currentWeek], async () => {
 })
 
 onMounted(async () => {
-	const { year, week } = getISOWeek(new Date())
-	currentYear.value = year
-	currentWeek.value = week
-	loadCustomColumns()
+	await Promise.all([loadWeek(), loadCustomColumns()])
 
 	usingNotifyPush = await trySetupNotifyPush()
 	if (!usingNotifyPush) {
