@@ -42,11 +42,12 @@ class CustomColumnsController extends Controller {
 			/** @psalm-suppress MixedAssignment */
 			$data = json_decode($entity->getData(), true);
 			if (is_array($data)) {
+				$data['updatedAt'] = $entity->getUpdatedAt();
 				return new JSONResponse($data);
 			}
 		}
 
-		return new JSONResponse($this->emptyCustomColumns());
+		return new JSONResponse(array_merge($this->emptyCustomColumns(), ['updatedAt' => 0]));
 	}
 
 	#[NoAdminRequired]
@@ -76,7 +77,7 @@ class CustomColumnsController extends Controller {
 
 		$this->notifyPush->notifyCustomColumnsUpdate($userId);
 
-		return new JSONResponse(['status' => 'ok']);
+		return new JSONResponse(['status' => 'ok', 'updatedAt' => $now]);
 	}
 
 	#[NoAdminRequired]

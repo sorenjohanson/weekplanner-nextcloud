@@ -42,11 +42,12 @@ class WeekController extends Controller {
 			/** @psalm-suppress MixedAssignment */
 			$data = json_decode($entity->getData(), true);
 			if (is_array($data)) {
+				$data['updatedAt'] = $entity->getUpdatedAt();
 				return new JSONResponse($data);
 			}
 		}
 
-		return new JSONResponse($this->emptyWeek());
+		return new JSONResponse(array_merge($this->emptyWeek(), ['updatedAt' => 0]));
 	}
 
 	#[NoAdminRequired]
@@ -78,7 +79,7 @@ class WeekController extends Controller {
 
 		$this->notifyPush->notifyWeekUpdate($userId, $year, $week);
 
-		return new JSONResponse(['status' => 'ok']);
+		return new JSONResponse(['status' => 'ok', 'updatedAt' => $now]);
 	}
 
 	#[NoAdminRequired]

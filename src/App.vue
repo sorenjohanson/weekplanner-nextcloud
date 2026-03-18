@@ -174,6 +174,9 @@ async function loadWeek() {
 		})
 		const response = await axios.get(url)
 		weekData.value = normalizeWeekData(response.data)
+		if (typeof response.data?.updatedAt === 'number') {
+			knownWeekUpdatedAt = response.data.updatedAt
+		}
 	} catch {
 		weekData.value = emptyWeek()
 	}
@@ -181,16 +184,17 @@ async function loadWeek() {
 
 let saveTimeout: ReturnType<typeof setTimeout> | null = null
 let isSaving = false
-let knownWeekUpdatedAt = Math.floor(Date.now() / 1000)
+let knownWeekUpdatedAt = 0
 let weekPollAbortController: AbortController | null = null
 let shouldPollWeek = false
 
 let customSaveInProgress = false
-let knownCustomUpdatedAt = Math.floor(Date.now() / 1000)
+let knownCustomUpdatedAt = 0
 let customPollAbortController: AbortController | null = null
 let shouldPollCustom = false
 
 let usingNotifyPush = false
+let mounted = false
 
 function debouncedSave() {
 	if (saveTimeout) clearTimeout(saveTimeout)
@@ -202,7 +206,10 @@ function debouncedSave() {
 				year: String(currentYear.value),
 				week: String(currentWeek.value),
 			})
-			await axios.put(url, weekData.value)
+			const response = await axios.put(url, weekData.value)
+			if (typeof response.data?.updatedAt === 'number') {
+				knownWeekUpdatedAt = response.data.updatedAt
+			}
 		} catch {
 			// Save failed silently
 		} finally {
@@ -216,6 +223,9 @@ async function loadCustomColumns() {
 	try {
 		const url = generateUrl('/apps/weekplanner/custom-columns')
 		const response = await axios.get(url)
+		if (typeof response.data?.updatedAt === 'number') {
+			knownCustomUpdatedAt = response.data.updatedAt
+		}
 		const data = response.data as { columns?: CustomColumn[] }
 		if (data.columns && Array.isArray(data.columns)) {
 			customColumns.value = data.columns.map((col) => ({
@@ -243,7 +253,10 @@ function debouncedSaveCustomColumns() {
 		customSaveInProgress = true
 		try {
 			const url = generateUrl('/apps/weekplanner/custom-columns')
-			await axios.put(url, { columns: customColumns.value })
+			const response = await axios.put(url, { columns: customColumns.value })
+			if (typeof response.data?.updatedAt === 'number') {
+				knownCustomUpdatedAt = response.data.updatedAt
+			}
 		} catch {
 			// Save failed silently
 		} finally {
@@ -530,9 +543,9 @@ watch([currentYear, currentWeek], async () => {
 	if (!usingNotifyPush) {
 		stopWeekPoll()
 	}
-	knownWeekUpdatedAt = Math.floor(Date.now() / 1000)
+	knownWeekUpdatedAt = 0
 	await loadWeek()
-	if (!usingNotifyPush) {
+	if (!usingNotifyPush && mounted) {
 		shouldPollWeek = true
 		longPollWeek()
 	}
@@ -542,6 +555,7 @@ onMounted(async () => {
 	await Promise.all([loadWeek(), loadCustomColumns()])
 
 	usingNotifyPush = await trySetupNotifyPush()
+	mounted = true
 	if (!usingNotifyPush) {
 		startLongPolling()
 	}
