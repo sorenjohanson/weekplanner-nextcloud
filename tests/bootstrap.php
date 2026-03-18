@@ -2,8 +2,17 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../../tests/bootstrap.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 
-\OC_App::loadApp(OCA\WeekPlanner\AppInfo\Application::APP_ID);
-OC_Hook::clear();
+// Register OCP stubs from nextcloud/ocp dev dependency
+spl_autoload_register(static function (string $class): void {
+	$prefix = 'OCP\\';
+	if (!str_starts_with($class, $prefix)) {
+		return;
+	}
+
+	$file = __DIR__ . '/../vendor/nextcloud/ocp/' . str_replace('\\', '/', $class) . '.php';
+	if (file_exists($file)) {
+		require_once $file;
+	}
+});
