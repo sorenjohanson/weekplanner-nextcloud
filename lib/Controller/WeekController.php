@@ -7,6 +7,7 @@ namespace OCA\WeekPlanner\Controller;
 use OCA\WeekPlanner\AppInfo\Application;
 use OCA\WeekPlanner\Db\Week;
 use OCA\WeekPlanner\Db\WeekMapper;
+use OCA\WeekPlanner\Service\NotifyPushService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\FrontpageRoute;
@@ -23,6 +24,7 @@ class WeekController extends Controller {
 		IRequest $request,
 		private WeekMapper $weekMapper,
 		private IUserSession $userSession,
+		private NotifyPushService $notifyPush,
 	) {
 		parent::__construct(Application::APP_ID, $request);
 	}
@@ -40,11 +42,12 @@ class WeekController extends Controller {
 			/** @psalm-suppress MixedAssignment */
 			$data = json_decode($entity->getData(), true);
 			if (is_array($data)) {
+				$data['updatedAt'] = $entity->getUpdatedAt();
 				return new JSONResponse($data);
 			}
 		}
 
-		return new JSONResponse($this->emptyWeek());
+		return new JSONResponse(array_merge($this->emptyWeek(), ['updatedAt' => 0]));
 	}
 
 	#[NoAdminRequired]
@@ -74,7 +77,9 @@ class WeekController extends Controller {
 			$this->weekMapper->insert($entity);
 		}
 
-		return new JSONResponse(['status' => 'ok']);
+		$this->notifyPush->notifyWeekUpdate($userId, $year, $week);
+
+		return new JSONResponse(['status' => 'ok', 'updatedAt' => $now]);
 	}
 
 	#[NoAdminRequired]
@@ -105,7 +110,7 @@ class WeekController extends Controller {
 				]);
 			}
 
-			sleep(1);
+			sleep(3);
 		}
 
 		return new JSONResponse(['changed' => false, 'updatedAt' => $since]);

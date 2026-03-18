@@ -14,7 +14,51 @@ services:
       - SQLITE_DATABASE=nextcloud
       - NEXTCLOUD_ADMIN_USER=admin
       - NEXTCLOUD_ADMIN_PASSWORD=admin
+      - REDIS_HOST=redis
+      - NOTIFY_PUSH_BASE_URL=http://${HOST_IP}:7867
+      - NEXTCLOUD_TRUSTED_DOMAINS=localhost ${HOST_IP}
+      - OVERWRITEPROTOCOL=http
+    depends_on:
+      redis:
+        condition: service_healthy
     restart: unless-stopped
+    networks:
+      - nc_net
+
+  notify_push:
+    image: nextcloud:32
+    entrypoint: /notify-push-entrypoint.sh
+    # Detect architecture at runtime so this works on both x86_64 and aarch64 (Apple Silicon).
+    # Wait for the notify_push binary to appear (installed by the nextcloud container), then run it.
+    user: www-data
+    ports:
+      - "7867:7867"
+    environment:
+      - PORT=7867
+      - NEXTCLOUD_URL=http://nextcloud
+    volumes:
+      - nextcloud_data:/var/www/html
+      - ./docker-notify-push-entrypoint.sh:/notify-push-entrypoint.sh:ro
+    depends_on:
+      - nextcloud
+      - redis
+    restart: unless-stopped
+    networks:
+      - nc_net
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - nc_net
 
 volumes:
   nextcloud_data:
+
+networks:
+  nc_net:

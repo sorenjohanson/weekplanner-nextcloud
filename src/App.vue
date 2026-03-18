@@ -39,8 +39,10 @@ const DAY_LABELS: Record<DayKey, string> = {
 }
 const ALL_KEYS: DayKey[] = [...WEEKDAY_KEYS, ...WEEKEND_KEYS]
 
-const currentYear = ref(0)
-const currentWeek = ref(0)
+// Initialise to actual values so the watcher only fires on navigation, not on mount.
+const { year: _initYear, week: _initWeek } = getISOWeek(new Date())
+const currentYear = ref(_initYear)
+const currentWeek = ref(_initWeek)
 const weekData = ref<WeekData>(emptyWeek())
 const newTasks = ref<Record<DayKey, string>>({
 	monday: '',
@@ -172,6 +174,9 @@ async function loadWeek() {
 		})
 		const response = await axios.get(url)
 		weekData.value = normalizeWeekData(response.data)
+		if (typeof response.data?.updatedAt === 'number') {
+			knownWeekUpdatedAt = response.data.updatedAt
+		}
 	} catch {
 		weekData.value = emptyWeek()
 	}
@@ -179,9 +184,17 @@ async function loadWeek() {
 
 let saveTimeout: ReturnType<typeof setTimeout> | null = null
 let isSaving = false
-let knownUpdatedAt = Math.floor(Date.now() / 1000)
-let pollAbortController: AbortController | null = null
-let shouldPoll = false
+let knownWeekUpdatedAt = 0
+let weekPollAbortController: AbortController | null = null
+let shouldPollWeek = false
+
+let customSaveInProgress = false
+let knownCustomUpdatedAt = 0
+let customPollAbortController: AbortController | null = null
+let shouldPollCustom = false
+
+let usingNotifyPush = false
+let mounted = false
 
 function debouncedSave() {
 	if (saveTimeout) clearTimeout(saveTimeout)
@@ -193,7 +206,10 @@ function debouncedSave() {
 				year: String(currentYear.value),
 				week: String(currentWeek.value),
 			})
-			await axios.put(url, weekData.value)
+			const response = await axios.put(url, weekData.value)
+			if (typeof response.data?.updatedAt === 'number') {
+				knownWeekUpdatedAt = response.data.updatedAt
+			}
 		} catch {
 			// Save failed silently
 		} finally {
@@ -207,6 +223,9 @@ async function loadCustomColumns() {
 	try {
 		const url = generateUrl('/apps/weekplanner/custom-columns')
 		const response = await axios.get(url)
+		if (typeof response.data?.updatedAt === 'number') {
+			knownCustomUpdatedAt = response.data.updatedAt
+		}
 		const data = response.data as { columns?: CustomColumn[] }
 		if (data.columns && Array.isArray(data.columns)) {
 			customColumns.value = data.columns.map((col) => ({
@@ -231,11 +250,17 @@ function debouncedSaveCustomColumns() {
 	if (customSaveTimeout) clearTimeout(customSaveTimeout)
 	customSaveTimeout = setTimeout(async () => {
 		customSaveTimeout = null
+		customSaveInProgress = true
 		try {
 			const url = generateUrl('/apps/weekplanner/custom-columns')
-			await axios.put(url, { columns: customColumns.value })
+			const response = await axios.put(url, { columns: customColumns.value })
+			if (typeof response.data?.updatedAt === 'number') {
+				knownCustomUpdatedAt = response.data.updatedAt
+			}
 		} catch {
 			// Save failed silently
+		} finally {
+			customSaveInProgress = false
 		}
 	}, 300)
 }
@@ -387,55 +412,157 @@ function goToday() {
 	currentWeek.value = week
 }
 
-function stopLongPoll() {
-	shouldPoll = false
-	pollAbortController?.abort()
-	pollAbortController = null
+// --- Long-polling: week data ---
+
+function stopWeekPoll() {
+	shouldPollWeek = false
+	weekPollAbortController?.abort()
+	weekPollAbortController = null
 }
 
-async function longPoll() {
-	if (!shouldPoll) return
+async function longPollWeek() {
+	if (!shouldPollWeek) return
 	const controller = new AbortController()
-	pollAbortController = controller
+	weekPollAbortController = controller
 	try {
 		const url = generateUrl('/apps/weekplanner/week/{year}/{week}/poll', {
 			year: String(currentYear.value),
 			week: String(currentWeek.value),
 		})
 		const response = await axios.get<{ changed: boolean; updatedAt: number; data?: unknown }>(
-			`${url}?since=${knownUpdatedAt}`,
+			`${url}?since=${knownWeekUpdatedAt}`,
 			{ signal: controller.signal, timeout: 35_000 },
 		)
 		if (response.data.changed) {
-			knownUpdatedAt = response.data.updatedAt
 			if (saveTimeout === null && !isSaving && !editingTask.value) {
+				knownWeekUpdatedAt = response.data.updatedAt
 				weekData.value = normalizeWeekData(response.data.data)
 			}
 		}
 	} catch {
-		if (pollAbortController?.signal.aborted) return
+		if (controller.signal.aborted) return
 		await new Promise((resolve) => setTimeout(resolve, 5_000))
 	}
-	longPoll()
+	longPollWeek()
 }
 
+// --- Long-polling: custom columns ---
+
+function stopCustomPoll() {
+	shouldPollCustom = false
+	customPollAbortController?.abort()
+	customPollAbortController = null
+}
+
+async function longPollCustom() {
+	if (!shouldPollCustom) return
+	const controller = new AbortController()
+	customPollAbortController = controller
+	try {
+		const url = generateUrl('/apps/weekplanner/custom-columns/poll')
+		const response = await axios.get<{ changed: boolean; updatedAt: number; data?: unknown }>(
+			`${url}?since=${knownCustomUpdatedAt}`,
+			{ signal: controller.signal, timeout: 35_000 },
+		)
+		if (response.data.changed) {
+			if (customSaveTimeout === null && !customSaveInProgress && !editingTask.value) {
+				knownCustomUpdatedAt = response.data.updatedAt
+				applyCustomColumnsData(response.data.data)
+			}
+		}
+	} catch {
+		if (controller.signal.aborted) return
+		await new Promise((resolve) => setTimeout(resolve, 5_000))
+	}
+	longPollCustom()
+}
+
+function applyCustomColumnsData(data: unknown) {
+	if (!data || typeof data !== 'object' || !('columns' in data)) return
+	const cols = (data as { columns?: CustomColumn[] }).columns
+	if (!Array.isArray(cols)) return
+	customColumns.value = cols.map((col) => ({
+		...col,
+		tasks: (col.tasks || []).map((t) => ({ ...t, notes: t.notes || '' })),
+	}))
+	const newObj: Record<string, string> = {}
+	for (const col of customColumns.value) {
+		newObj[col.id] = newCustomTasks.value[col.id] || ''
+	}
+	newCustomTasks.value = newObj
+}
+
+// --- Long-poll lifecycle helpers ---
+
+function startLongPolling() {
+	shouldPollWeek = true
+	longPollWeek()
+	shouldPollCustom = true
+	longPollCustom()
+}
+
+function stopAllPolling() {
+	stopWeekPoll()
+	stopCustomPoll()
+}
+
+// --- notify_push integration ---
+
+async function trySetupNotifyPush(): Promise<boolean> {
+	try {
+		const mod = await import('@nextcloud/notify_push')
+
+		const available = mod.listen('weekplanner_week_update', (_type, body) => {
+			if (!body) return
+			if (Number(body.year) === currentYear.value && Number(body.week) === currentWeek.value) {
+				if (saveTimeout === null && !isSaving && !editingTask.value) {
+					loadWeek()
+				}
+			}
+		})
+
+		if (!available) {
+			return false
+		}
+
+		mod.listen('weekplanner_customcolumns_update', () => {
+			if (customSaveTimeout === null && !customSaveInProgress && !editingTask.value) {
+				loadCustomColumns()
+			}
+		})
+
+		return true
+	} catch {
+		return false
+	}
+}
+
+// --- Lifecycle ---
+
 watch([currentYear, currentWeek], async () => {
-	stopLongPoll()
-	knownUpdatedAt = Math.floor(Date.now() / 1000)
+	if (!usingNotifyPush) {
+		stopWeekPoll()
+	}
+	knownWeekUpdatedAt = 0
 	await loadWeek()
-	shouldPoll = true
-	longPoll()
+	if (!usingNotifyPush && mounted) {
+		shouldPollWeek = true
+		longPollWeek()
+	}
 })
 
-onMounted(() => {
-	const { year, week } = getISOWeek(new Date())
-	currentYear.value = year
-	currentWeek.value = week
-	loadCustomColumns()
+onMounted(async () => {
+	await Promise.all([loadWeek(), loadCustomColumns()])
+
+	usingNotifyPush = await trySetupNotifyPush()
+	mounted = true
+	if (!usingNotifyPush) {
+		startLongPolling()
+	}
 })
 
 onUnmounted(() => {
-	stopLongPoll()
+	stopAllPolling()
 	if (saveTimeout) clearTimeout(saveTimeout)
 	if (customSaveTimeout) clearTimeout(customSaveTimeout)
 })

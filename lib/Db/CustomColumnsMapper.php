@@ -19,6 +19,20 @@ class CustomColumnsMapper extends QBMapper {
 		parent::__construct($db, 'weekplanner_cc', CustomColumns::class);
 	}
 
+	public function getUpdatedAt(string $userId): int {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('updated_at')
+			->from($this->getTableName())
+			->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+
+		$result = $qb->executeQuery();
+		/** @var array{updated_at: int}|false $row */
+		$row = $result->fetch();
+		$result->closeCursor();
+
+		return $row !== false ? $row['updated_at'] : 0;
+	}
+
 	public function findByUser(string $userId): ?CustomColumns {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select('*')
