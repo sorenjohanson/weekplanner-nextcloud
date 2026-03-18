@@ -511,10 +511,8 @@ function stopAllPolling() {
 async function trySetupNotifyPush(): Promise<boolean> {
 	try {
 		const mod = await import('@nextcloud/notify_push')
-		const listen = mod.listen as ((event: string, handler: (type: string, body?: Record<string, unknown>) => void) => boolean) | undefined
-		if (typeof listen !== 'function') return false
 
-		const available = listen('weekplanner_week_update', (_type, body) => {
+		const available = mod.listen('weekplanner_week_update', (_type, body) => {
 			if (!body) return
 			if (Number(body.year) === currentYear.value && Number(body.week) === currentWeek.value) {
 				if (saveTimeout === null && !isSaving && !editingTask.value) {
@@ -523,9 +521,12 @@ async function trySetupNotifyPush(): Promise<boolean> {
 			}
 		})
 
-		if (!available) return false
+		if (!available) {
+			console.log('notify_push not available on the server!')
+			return false
+		}
 
-		listen('weekplanner_customcolumns_update', () => {
+		mod.listen('weekplanner_customcolumns_update', () => {
 			if (customSaveTimeout === null && !customSaveInProgress && !editingTask.value) {
 				loadCustomColumns()
 			}

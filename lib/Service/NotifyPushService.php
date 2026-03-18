@@ -37,7 +37,7 @@ class NotifyPushService {
 		}
 
 		try {
-			$this->queue = Server::get('OCA\NotifyPush\IQueue');
+			$this->queue = Server::get('OCA\NotifyPush\Queue\IQueue');
 		} catch (\Throwable $e) {
 			$this->logger->debug('notify_push IQueue not available: ' . $e->getMessage());
 		}
