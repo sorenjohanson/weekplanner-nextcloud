@@ -483,7 +483,11 @@ function handleRecurrenceChange(task: Task, day: DayKey) {
 			def.title = editTitle.value.trim() || task.title
 			def.notes = editNotes.value
 			def.recurrence = newRecurrence as 'daily' | 'weekly' | 'monthly'
-			def.endDate = ''
+			// Only clear endDate when re-enabling recurrence that was previously removed,
+			// not when just changing the type (e.g. weekly→monthly), which would undo deletions
+			if (!task.recurrence) {
+				def.endDate = ''
+			}
 			task.recurrence = newRecurrence
 			debouncedSaveCustomColumns()
 			materializeRecurringTasks()
