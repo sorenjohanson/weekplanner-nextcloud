@@ -15,6 +15,18 @@ interface Task {
 	done: boolean
 	notes: string
 	recurrence: Recurrence
+	recurringSourceId?: string
+}
+
+interface RecurringTaskDefinition {
+	id: string
+	title: string
+	notes: string
+	recurrence: 'daily' | 'weekly' | 'monthly'
+	startDate: string
+	endDate: string
+	dayOfWeek: number
+	dayOfMonth: number
 }
 
 type DayKey = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'
@@ -68,6 +80,9 @@ const newCustomTasks = ref<Record<string, string>>({
 	custom_2: '',
 	custom_3: '',
 })
+
+// Recurring task definitions (persists across weeks)
+const recurringTasks = ref<RecurringTaskDefinition[]>([])
 
 // Edit dialog state
 const editingTask = ref<{ day: DayKey | string; taskId: string } | null>(null)
@@ -159,16 +174,66 @@ function normalizeWeekData(data: unknown): WeekData {
 		if (days && typeof days === 'object') {
 			for (const key of ALL_KEYS) {
 				if (Array.isArray(days[key])) {
-					result.days[key] = (days[key] as Task[]).map((t) => ({
-						...t,
-						notes: t.notes || '',
-						recurrence: t.recurrence || '',
-					}))
+					result.days[key] = (days[key] as Task[]).map((t) => {
+						const task: Task = {
+							...t,
+							notes: t.notes || '',
+							recurrence: t.recurrence || '',
+						}
+						if (t.recurringSourceId) {
+							task.recurringSourceId = t.recurringSourceId
+						}
+						return task
+					})
 				}
 			}
 		}
 	}
 	return result
+}
+
+function toDateStr(d: Date): string {
+	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function materializeRecurringTasks() {
+	const dates = getWeekDates(currentYear.value, currentWeek.value)
+	let changed = false
+	for (let i = 0; i < ALL_KEYS.length; i++) {
+		const day = ALL_KEYS[i]
+		const date = dates[i]
+		const dateStr = toDateStr(date)
+		for (const def of recurringTasks.value) {
+			if (dateStr < def.startDate) continue
+			if (def.endDate && dateStr > def.endDate) continue
+			let matches = false
+			if (def.recurrence === 'daily') {
+				matches = true
+			} else if (def.recurrence === 'weekly') {
+				matches = i === def.dayOfWeek
+			} else if (def.recurrence === 'monthly') {
+				matches = date.getDate() === def.dayOfMonth
+			}
+			if (!matches) continue
+			const alreadyExists = weekData.value.days[day].some(
+				(t) => t.recurringSourceId === def.id,
+			)
+			if (!alreadyExists) {
+				weekData.value.days[day].push({
+					id: crypto.randomUUID(),
+					title: def.title,
+					done: false,
+					notes: def.notes,
+					recurrence: def.recurrence,
+					recurringSourceId: def.id,
+				})
+				changed = true
+			}
+		}
+	}
+	if (changed) {
+		debouncedSave()
+	}
 }
 
 async function loadWeek() {
@@ -185,6 +250,7 @@ async function loadWeek() {
 	} catch {
 		weekData.value = emptyWeek()
 	}
+	materializeRecurringTasks()
 }
 
 let saveTimeout: ReturnType<typeof setTimeout> | null = null
@@ -231,7 +297,7 @@ async function loadCustomColumns() {
 		if (typeof response.data?.updatedAt === 'number') {
 			knownCustomUpdatedAt = response.data.updatedAt
 		}
-		const data = response.data as { columns?: CustomColumn[] }
+		const data = response.data as { columns?: CustomColumn[]; recurringTasks?: RecurringTaskDefinition[] }
 		if (data.columns && Array.isArray(data.columns)) {
 			customColumns.value = data.columns.map((col) => ({
 				...col,
@@ -243,6 +309,9 @@ async function loadCustomColumns() {
 				newObj[col.id] = newCustomTasks.value[col.id] || ''
 			}
 			newCustomTasks.value = newObj
+		}
+		if (Array.isArray(data.recurringTasks)) {
+			recurringTasks.value = data.recurringTasks
 		}
 	} catch {
 		// Keep defaults
@@ -258,7 +327,7 @@ function debouncedSaveCustomColumns() {
 		customSaveInProgress = true
 		try {
 			const url = generateUrl('/apps/weekplanner/custom-columns')
-			const response = await axios.put(url, { columns: customColumns.value })
+			const response = await axios.put(url, { columns: customColumns.value, recurringTasks: recurringTasks.value })
 			if (typeof response.data?.updatedAt === 'number') {
 				knownCustomUpdatedAt = response.data.updatedAt
 			}
@@ -346,10 +415,79 @@ function openEdit(day: DayKey | string, task: Task) {
 	editingTask.value = { day, taskId: task.id }
 	editTitle.value = task.title
 	editNotes.value = task.notes || ''
-	editRecurrence.value = task.recurrence || ''
+	// Load recurrence from definition if this is a recurring instance
+	if (task.recurringSourceId) {
+		const def = recurringTasks.value.find((d) => d.id === task.recurringSourceId)
+		editRecurrence.value = def ? def.recurrence : (task.recurrence || '')
+	} else {
+		editRecurrence.value = task.recurrence || ''
+	}
 	nextTick(() => {
 		editTitleInput.value?.focus()
 	})
+}
+
+function getTaskDate(day: DayKey): string {
+	const idx = ALL_KEYS.indexOf(day)
+	const dates = getWeekDates(currentYear.value, currentWeek.value)
+	return toDateStr(dates[idx])
+}
+
+function handleRecurrenceChange(task: Task, day: DayKey) {
+	const newRecurrence = editRecurrence.value
+	const oldSourceId = task.recurringSourceId
+
+	if (newRecurrence && !oldSourceId) {
+		// Setting recurrence for the first time: create a definition
+		const defId = crypto.randomUUID()
+		const dateStr = getTaskDate(day)
+		const date = weekDates.value[ALL_KEYS.indexOf(day)]
+		recurringTasks.value.push({
+			id: defId,
+			title: editTitle.value.trim() || task.title,
+			notes: editNotes.value,
+			recurrence: newRecurrence as 'daily' | 'weekly' | 'monthly',
+			startDate: dateStr,
+			endDate: '',
+			dayOfWeek: ALL_KEYS.indexOf(day),
+			dayOfMonth: date.getDate(),
+		})
+		task.recurringSourceId = defId
+		task.recurrence = newRecurrence
+		debouncedSaveCustomColumns()
+		// Materialize for remaining days in this week
+		materializeRecurringTasks()
+	} else if (newRecurrence && oldSourceId) {
+		// Updating an existing recurrence definition
+		const def = recurringTasks.value.find((d) => d.id === oldSourceId)
+		if (def) {
+			def.title = editTitle.value.trim() || task.title
+			def.notes = editNotes.value
+			def.recurrence = newRecurrence as 'daily' | 'weekly' | 'monthly'
+			task.recurrence = newRecurrence
+			debouncedSaveCustomColumns()
+		}
+	} else if (!newRecurrence && oldSourceId) {
+		// Removing recurrence: set endDate and clean up future instances
+		const def = recurringTasks.value.find((d) => d.id === oldSourceId)
+		const dateStr = getTaskDate(day)
+		if (def) {
+			def.endDate = dateStr
+		}
+		task.recurrence = ''
+		delete task.recurringSourceId
+		// Remove instances from days after endDate in this week
+		const dates = getWeekDates(currentYear.value, currentWeek.value)
+		for (let i = 0; i < ALL_KEYS.length; i++) {
+			const dStr = toDateStr(dates[i])
+			if (dStr > dateStr) {
+				weekData.value.days[ALL_KEYS[i]] = weekData.value.days[ALL_KEYS[i]].filter(
+					(t) => t.recurringSourceId !== oldSourceId,
+				)
+			}
+		}
+		debouncedSaveCustomColumns()
+	}
 }
 
 function saveEdit() {
@@ -369,9 +507,23 @@ function saveEdit() {
 	} else {
 		const task = weekData.value.days[day as DayKey].find((t) => t.id === taskId)
 		if (task) {
+			const oldRecurrence = task.recurringSourceId
+				? (recurringTasks.value.find((d) => d.id === task.recurringSourceId)?.recurrence || '')
+				: (task.recurrence || '')
 			task.title = editTitle.value.trim() || task.title
 			task.notes = editNotes.value
-			task.recurrence = editRecurrence.value
+			// Handle recurrence changes
+			if (editRecurrence.value !== oldRecurrence) {
+				handleRecurrenceChange(task, day as DayKey)
+			} else if (task.recurringSourceId) {
+				// Update definition title/notes even if recurrence didn't change
+				const def = recurringTasks.value.find((d) => d.id === task.recurringSourceId)
+				if (def) {
+					def.title = task.title
+					def.notes = task.notes
+					debouncedSaveCustomColumns()
+				}
+			}
 			debouncedSave()
 		}
 	}
@@ -384,7 +536,30 @@ function deleteEditingTask() {
 	if (isCustomColumn(day)) {
 		deleteCustomTask(day, taskId)
 	} else {
-		deleteTask(day as DayKey, taskId)
+		// If this is a recurring task, also clean up the definition
+		const task = weekData.value.days[day as DayKey].find((t) => t.id === taskId)
+		if (task?.recurringSourceId) {
+			const sourceId = task.recurringSourceId
+			const dateStr = getTaskDate(day as DayKey)
+			const def = recurringTasks.value.find((d) => d.id === sourceId)
+			if (def) {
+				def.endDate = dateStr
+			}
+			// Remove all instances from this day onward
+			const dates = getWeekDates(currentYear.value, currentWeek.value)
+			for (let i = 0; i < ALL_KEYS.length; i++) {
+				const dStr = toDateStr(dates[i])
+				if (dStr >= dateStr) {
+					weekData.value.days[ALL_KEYS[i]] = weekData.value.days[ALL_KEYS[i]].filter(
+						(t) => t.recurringSourceId !== sourceId,
+					)
+				}
+			}
+			debouncedSaveCustomColumns()
+			debouncedSave()
+		} else {
+			deleteTask(day as DayKey, taskId)
+		}
 	}
 	editingTask.value = null
 }
@@ -447,6 +622,7 @@ async function longPollWeek() {
 			if (saveTimeout === null && !isSaving && !editingTask.value) {
 				knownWeekUpdatedAt = response.data.updatedAt
 				weekData.value = normalizeWeekData(response.data.data)
+				materializeRecurringTasks()
 			}
 		}
 	} catch {
@@ -489,7 +665,8 @@ async function longPollCustom() {
 
 function applyCustomColumnsData(data: unknown) {
 	if (!data || typeof data !== 'object' || !('columns' in data)) return
-	const cols = (data as { columns?: CustomColumn[] }).columns
+	const typed = data as { columns?: CustomColumn[]; recurringTasks?: RecurringTaskDefinition[] }
+	const cols = typed.columns
 	if (!Array.isArray(cols)) return
 	customColumns.value = cols.map((col) => ({
 		...col,
@@ -500,6 +677,9 @@ function applyCustomColumnsData(data: unknown) {
 		newObj[col.id] = newCustomTasks.value[col.id] || ''
 	}
 	newCustomTasks.value = newObj
+	if (Array.isArray(typed.recurringTasks)) {
+		recurringTasks.value = typed.recurringTasks
+	}
 }
 
 // --- Long-poll lifecycle helpers ---
