@@ -536,7 +536,10 @@ function deleteEditingTask() {
 			const dateStr = getTaskDate(day as DayKey)
 			const def = recurringTasks.value.find((d) => d.id === sourceId)
 			if (def) {
-				def.endDate = dateStr
+				// Set endDate to the day before so materialization won't recreate the deleted task
+				const prev = new Date(dateStr + 'T00:00:00')
+				prev.setDate(prev.getDate() - 1)
+				def.endDate = toDateStr(prev)
 			}
 			// Remove all instances from this day onward
 			const dates = getWeekDates(currentYear.value, currentWeek.value)
