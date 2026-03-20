@@ -6,53 +6,10 @@ import NcButton from '@nextcloud/vue/components/NcButton'
 import draggable from 'vuedraggable'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
-
-type Recurrence = '' | 'daily' | 'weekly' | 'monthly'
-
-interface Task {
-	id: string
-	title: string
-	done: boolean
-	notes: string
-	recurrence: Recurrence
-	recurringSourceId?: string
-}
-
-interface RecurringTaskDefinition {
-	id: string
-	title: string
-	notes: string
-	recurrence: 'daily' | 'weekly' | 'monthly'
-	startDate: string
-	endDate: string
-	dayOfWeek: number
-	dayOfMonth: number
-}
-
-type DayKey = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'
-
-interface WeekData {
-	days: Record<DayKey, Task[]>
-}
-
-interface CustomColumn {
-	id: string
-	title: string
-	tasks: Task[]
-}
-
-const WEEKDAY_KEYS: DayKey[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
-const WEEKEND_KEYS: DayKey[] = ['saturday', 'sunday']
-const DAY_LABELS: Record<DayKey, string> = {
-	monday: 'Monday',
-	tuesday: 'Tuesday',
-	wednesday: 'Wednesday',
-	thursday: 'Thursday',
-	friday: 'Friday',
-	saturday: 'Saturday',
-	sunday: 'Sunday',
-}
-const ALL_KEYS: DayKey[] = [...WEEKDAY_KEYS, ...WEEKEND_KEYS]
+import type { Recurrence, Task, RecurringTaskDefinition, DayKey, WeekData, CustomColumn } from './types'
+import { WEEKDAY_KEYS, WEEKEND_KEYS, DAY_LABELS, ALL_KEYS } from './types'
+import { getISOWeek, getWeekMonday, getWeekDates, toDateStr } from './utils/dateUtils'
+import { emptyWeek, normalizeWeekData } from './utils/weekData'
 
 // Initialise to actual values so the watcher only fires on navigation, not on mount.
 const { year: _initYear, week: _initWeek } = getISOWeek(new Date())
@@ -91,49 +48,6 @@ const editNotes = ref('')
 const editRecurrence = ref<Recurrence>('')
 const editTitleInput = ref<HTMLInputElement | null>(null)
 
-function emptyWeek(): WeekData {
-	return {
-		days: {
-			monday: [],
-			tuesday: [],
-			wednesday: [],
-			thursday: [],
-			friday: [],
-			saturday: [],
-			sunday: [],
-		},
-	}
-}
-
-function getISOWeek(date: Date): { year: number; week: number } {
-	const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
-	d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7))
-	const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
-	const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
-	return { year: d.getUTCFullYear(), week: weekNo }
-}
-
-function getWeekMonday(year: number, week: number): Date {
-	const jan4 = new Date(year, 0, 4)
-	const dayOfWeek = jan4.getDay() || 7
-	const mondayWeek1 = new Date(jan4)
-	mondayWeek1.setDate(jan4.getDate() - dayOfWeek + 1)
-	const monday = new Date(mondayWeek1)
-	monday.setDate(mondayWeek1.getDate() + (week - 1) * 7)
-	return monday
-}
-
-function getWeekDates(year: number, week: number): Date[] {
-	const monday = getWeekMonday(year, week)
-	const dates: Date[] = []
-	for (let i = 0; i < 7; i++) {
-		const date = new Date(monday)
-		date.setDate(monday.getDate() + i)
-		dates.push(date)
-	}
-	return dates
-}
-
 const weekDates = computed(() => getWeekDates(currentYear.value, currentWeek.value))
 
 const weekLabel = computed(() => {
@@ -165,35 +79,6 @@ function formatDate(day: DayKey): string {
 	const date = weekDates.value[dayIndex(day)]
 	if (!date) return ''
 	return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-function normalizeWeekData(data: unknown): WeekData {
-	const result = emptyWeek()
-	if (data && typeof data === 'object' && 'days' in data) {
-		const days = (data as { days: Record<string, unknown> }).days
-		if (days && typeof days === 'object') {
-			for (const key of ALL_KEYS) {
-				if (Array.isArray(days[key])) {
-					result.days[key] = (days[key] as Task[]).map((t) => {
-						const task: Task = {
-							...t,
-							notes: t.notes || '',
-							recurrence: t.recurrence || '',
-						}
-						if (t.recurringSourceId) {
-							task.recurringSourceId = t.recurringSourceId
-						}
-						return task
-					})
-				}
-			}
-		}
-	}
-	return result
-}
-
-function toDateStr(d: Date): string {
-	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function materializeRecurringTasks() {
