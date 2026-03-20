@@ -1,673 +1,104 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import NcAppContent from '@nextcloud/vue/components/NcAppContent'
 import NcContent from '@nextcloud/vue/components/NcContent'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import draggable from 'vuedraggable'
-import axios from '@nextcloud/axios'
-import { generateUrl } from '@nextcloud/router'
-import type { Recurrence, Task, RecurringTaskDefinition, DayKey, WeekData, CustomColumn } from './types'
-import { WEEKDAY_KEYS, WEEKEND_KEYS, DAY_LABELS, ALL_KEYS } from './types'
-import { getISOWeek, getWeekMonday, getWeekDates, toDateStr } from './utils/dateUtils'
-import { emptyWeek, normalizeWeekData } from './utils/weekData'
+import type { Task, RecurringTaskDefinition, WeekData } from './types'
+import { WEEKDAY_KEYS, WEEKEND_KEYS, DAY_LABELS } from './types'
+import { emptyWeek } from './utils/weekData'
+import { useWeekNavigation } from './composables/useWeekNavigation'
+import { useWeekPersistence } from './composables/useWeekPersistence'
+import { useCustomColumns } from './composables/useCustomColumns'
+import { useRecurringTasks } from './composables/useRecurringTasks'
+import { useTaskEditing } from './composables/useTaskEditing'
+import { usePolling } from './composables/usePolling'
 
-// Initialise to actual values so the watcher only fires on navigation, not on mount.
-const { year: _initYear, week: _initWeek } = getISOWeek(new Date())
-const currentYear = ref(_initYear)
-const currentWeek = ref(_initWeek)
+// --- Shared state ---
 const weekData = ref<WeekData>(emptyWeek())
-const newTasks = ref<Record<DayKey, string>>({
-	monday: '',
-	tuesday: '',
-	wednesday: '',
-	thursday: '',
-	friday: '',
-	saturday: '',
-	sunday: '',
-})
-
-// Custom columns state (persists across weeks)
-const customColumns = ref<CustomColumn[]>([
-	{ id: 'custom_1', title: 'Someday', tasks: [] },
-	{ id: 'custom_2', title: '', tasks: [] },
-	{ id: 'custom_3', title: '', tasks: [] },
-])
-const newCustomTasks = ref<Record<string, string>>({
-	custom_1: '',
-	custom_2: '',
-	custom_3: '',
-})
-
-// Recurring task definitions (persists across weeks)
 const recurringTasks = ref<RecurringTaskDefinition[]>([])
 
-// Edit dialog state
-const editingTask = ref<{ day: DayKey | string; taskId: string } | null>(null)
-const editTitle = ref('')
-const editNotes = ref('')
-const editRecurrence = ref<Recurrence>('')
-const editTitleInput = ref<HTMLInputElement | null>(null)
+// --- Composables ---
+const {
+	currentYear, currentWeek, weekDates, weekLabel,
+	isToday, formatDate, prevWeek, nextWeek, goToday,
+} = useWeekNavigation()
 
-const weekDates = computed(() => getWeekDates(currentYear.value, currentWeek.value))
+const weekPersistence = useWeekPersistence(
+	currentYear, currentWeek, weekData,
+	() => recurring.materializeRecurringTasks(),
+)
 
-const weekLabel = computed(() => {
-	const dates = weekDates.value
-	if (dates.length === 0) return ''
-	const mon = dates[0]
-	const sun = dates[6]
-	const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-	const yearStr = sun.getFullYear()
-	return `Week ${currentWeek.value} \u00B7 ${fmt(mon)} \u2013 ${fmt(sun)}, ${yearStr}`
+const columns = useCustomColumns(recurringTasks)
+const { customColumns, newCustomTasks, addCustomTask, toggleCustomDone, updateColumnTitle } = columns
+
+const recurring = useRecurringTasks(
+	currentYear, currentWeek, weekData, recurringTasks,
+	weekPersistence.debouncedSave,
+)
+
+const {
+	editingTask, editTitle, editNotes, editRecurrence, editTitleInput,
+	newTasks, openEdit, saveEdit, deleteEditingTask, addTask, toggleDone,
+} = useTaskEditing(
+	currentYear, currentWeek, weekData, weekDates, recurringTasks,
+	columns.customColumns, weekPersistence.debouncedSave,
+	columns.debouncedSaveCustomColumns, weekPersistence.saveWeekNow,
+	columns.saveCustomColumnsNow, weekPersistence.flushSaveTimeout,
+	columns.flushCustomSaveTimeout, columns.deleteCustomTask,
+	recurring.materializeRecurringTasks,
+)
+
+const polling = usePolling({
+	currentYear,
+	currentWeek,
+	weekData,
+	editingTask,
+	loadWeek: weekPersistence.loadWeek,
+	loadCustomColumns: columns.loadCustomColumns,
+	materializeRecurringTasks: recurring.materializeRecurringTasks,
+	applyCustomColumnsData: columns.applyCustomColumnsData,
+	isWeekSaveIdle: weekPersistence.isSaveIdle,
+	isCustomSaveIdle: columns.isSaveIdle,
+	getWeekKnownUpdatedAt: weekPersistence.getKnownUpdatedAt,
+	setWeekKnownUpdatedAt: weekPersistence.setKnownUpdatedAt,
+	getCustomKnownUpdatedAt: columns.getKnownUpdatedAt,
+	setCustomKnownUpdatedAt: columns.setKnownUpdatedAt,
 })
 
-function dayIndex(day: DayKey): number {
-	return ALL_KEYS.indexOf(day)
-}
-
-function isToday(day: DayKey): boolean {
-	const date = weekDates.value[dayIndex(day)]
-	if (!date) return false
-	const today = new Date()
-	return (
-		date.getFullYear() === today.getFullYear()
-		&& date.getMonth() === today.getMonth()
-		&& date.getDate() === today.getDate()
-	)
-}
-
-function formatDate(day: DayKey): string {
-	const date = weekDates.value[dayIndex(day)]
-	if (!date) return ''
-	return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-function materializeRecurringTasks() {
-	const dates = getWeekDates(currentYear.value, currentWeek.value)
-	let changed = false
-
-	// Clean up stale recurring instances (definition ended, deleted, or no longer matching pattern)
-	for (let i = 0; i < ALL_KEYS.length; i++) {
-		const day = ALL_KEYS[i]
-		const dateStr = toDateStr(dates[i])
-		const before = weekData.value.days[day].length
-		weekData.value.days[day] = weekData.value.days[day].filter((t) => {
-			if (!t.recurringSourceId) return true
-			const def = recurringTasks.value.find((d) => d.id === t.recurringSourceId)
-			if (!def) return false
-			if (def.endDate && dateStr > def.endDate) return false
-			// Remove instances that no longer match the current recurrence pattern
-			// (e.g. after changing from weekly to monthly)
-			if (def.recurrence === 'weekly' && i !== def.dayOfWeek) return false
-			if (def.recurrence === 'monthly' && dates[i].getDate() !== def.dayOfMonth) return false
-			return true
-		})
-		if (weekData.value.days[day].length !== before) changed = true
-	}
-
-	// Materialize new instances
-	for (let i = 0; i < ALL_KEYS.length; i++) {
-		const day = ALL_KEYS[i]
-		const date = dates[i]
-		const dateStr = toDateStr(date)
-		for (const def of recurringTasks.value) {
-			if (dateStr < def.startDate) continue
-			if (def.endDate && dateStr > def.endDate) continue
-			let matches = false
-			if (def.recurrence === 'daily') {
-				matches = true
-			} else if (def.recurrence === 'weekly') {
-				matches = i === def.dayOfWeek
-			} else if (def.recurrence === 'monthly') {
-				matches = date.getDate() === def.dayOfMonth
-			}
-			if (!matches) continue
-			const alreadyExists = weekData.value.days[day].some(
-				(t) => t.recurringSourceId === def.id,
-			)
-			if (!alreadyExists) {
-				weekData.value.days[day].push({
-					id: crypto.randomUUID(),
-					title: def.title,
-					done: false,
-					notes: def.notes,
-					recurrence: def.recurrence,
-					recurringSourceId: def.id,
-				})
-				changed = true
-			}
-		}
-	}
-	if (changed) {
-		debouncedSave()
-	}
-}
-
-async function loadWeek() {
-	try {
-		const url = generateUrl('/apps/weekplanner/week/{year}/{week}', {
-			year: String(currentYear.value),
-			week: String(currentWeek.value),
-		})
-		const response = await axios.get(url)
-		weekData.value = normalizeWeekData(response.data)
-		if (typeof response.data?.updatedAt === 'number') {
-			knownWeekUpdatedAt = response.data.updatedAt
-		}
-	} catch {
-		weekData.value = emptyWeek()
-	}
-	materializeRecurringTasks()
-}
-
-let saveTimeout: ReturnType<typeof setTimeout> | null = null
-let isSaving = false
-let knownWeekUpdatedAt = 0
-let weekPollAbortController: AbortController | null = null
-let shouldPollWeek = false
-
-let customSaveInProgress = false
-let knownCustomUpdatedAt = 0
-let customPollAbortController: AbortController | null = null
-let shouldPollCustom = false
-
-let usingNotifyPush = false
-let mounted = false
-
-async function saveWeekNow() {
-	isSaving = true
-	try {
-		const url = generateUrl('/apps/weekplanner/week/{year}/{week}', {
-			year: String(currentYear.value),
-			week: String(currentWeek.value),
-		})
-		const response = await axios.put(url, weekData.value)
-		if (typeof response.data?.updatedAt === 'number') {
-			knownWeekUpdatedAt = response.data.updatedAt
-		}
-	} catch {
-		// Save failed silently
-	} finally {
-		isSaving = false
-	}
-}
-
-function debouncedSave() {
-	if (saveTimeout) clearTimeout(saveTimeout)
-	saveTimeout = setTimeout(() => {
-		saveTimeout = null
-		saveWeekNow()
-	}, 300)
-}
-
-// Custom columns persistence (separate from weekly data)
-async function loadCustomColumns() {
-	try {
-		const url = generateUrl('/apps/weekplanner/custom-columns')
-		const response = await axios.get(url)
-		if (typeof response.data?.updatedAt === 'number') {
-			knownCustomUpdatedAt = response.data.updatedAt
-		}
-		const data = response.data as { columns?: CustomColumn[]; recurringTasks?: RecurringTaskDefinition[] }
-		if (data.columns && Array.isArray(data.columns)) {
-			customColumns.value = data.columns.map((col) => ({
-				...col,
-				tasks: (col.tasks || []).map((t) => ({ ...t, notes: t.notes || '', recurrence: t.recurrence || '' })),
-			}))
-			// Sync newCustomTasks keys
-			const newObj: Record<string, string> = {}
-			for (const col of customColumns.value) {
-				newObj[col.id] = newCustomTasks.value[col.id] || ''
-			}
-			newCustomTasks.value = newObj
-		}
-		if (Array.isArray(data.recurringTasks)) {
-			recurringTasks.value = data.recurringTasks
-		}
-	} catch {
-		// Keep defaults
-	}
-}
-
-let customSaveTimeout: ReturnType<typeof setTimeout> | null = null
-
-async function saveCustomColumnsNow() {
-	customSaveInProgress = true
-	try {
-		const url = generateUrl('/apps/weekplanner/custom-columns')
-		const response = await axios.put(url, { columns: customColumns.value, recurringTasks: recurringTasks.value })
-		if (typeof response.data?.updatedAt === 'number') {
-			knownCustomUpdatedAt = response.data.updatedAt
-		}
-	} catch {
-		// Save failed silently
-	} finally {
-		customSaveInProgress = false
-	}
-}
-
-function debouncedSaveCustomColumns() {
-	if (customSaveTimeout) clearTimeout(customSaveTimeout)
-	customSaveTimeout = setTimeout(() => {
-		customSaveTimeout = null
-		saveCustomColumnsNow()
-	}, 300)
-}
-
-function addCustomTask(columnId: string) {
-	const title = newCustomTasks.value[columnId]?.trim()
-	if (!title) return
-	const col = customColumns.value.find((c) => c.id === columnId)
-	if (!col) return
-	col.tasks.push({
-		id: crypto.randomUUID(),
-		title,
-		done: false,
-		notes: '',
-		recurrence: '',
-	})
-	newCustomTasks.value[columnId] = ''
-	debouncedSaveCustomColumns()
-}
-
-function toggleCustomDone(columnId: string, taskId: string) {
-	const col = customColumns.value.find((c) => c.id === columnId)
-	if (!col) return
-	const task = col.tasks.find((t) => t.id === taskId)
-	if (task) {
-		task.done = !task.done
-		debouncedSaveCustomColumns()
-	}
-}
-
-function deleteCustomTask(columnId: string, taskId: string) {
-	const col = customColumns.value.find((c) => c.id === columnId)
-	if (!col) return
-	col.tasks = col.tasks.filter((t) => t.id !== taskId)
-	debouncedSaveCustomColumns()
-}
-
-function updateColumnTitle(columnId: string, title: string) {
-	const col = customColumns.value.find((c) => c.id === columnId)
-	if (col) {
-		col.title = title
-		debouncedSaveCustomColumns()
-	}
-}
-
-function addTask(day: DayKey) {
-	const title = newTasks.value[day].trim()
-	if (!title) return
-	weekData.value.days[day].push({
-		id: crypto.randomUUID(),
-		title,
-		done: false,
-		notes: '',
-		recurrence: '',
-	})
-	newTasks.value[day] = ''
-	debouncedSave()
-}
-
-function toggleDone(day: DayKey, taskId: string) {
-	const task = weekData.value.days[day].find((t) => t.id === taskId)
-	if (task) {
-		task.done = !task.done
-		debouncedSave()
-	}
-}
-
-function deleteTask(day: DayKey, taskId: string) {
-	weekData.value.days[day] = weekData.value.days[day].filter((t) => t.id !== taskId)
-	debouncedSave()
-}
-
-function isCustomColumn(key: string): boolean {
-	return key.startsWith('custom_')
-}
-
-function openEdit(day: DayKey | string, task: Task) {
-	editingTask.value = { day, taskId: task.id }
-	editTitle.value = task.title
-	editNotes.value = task.notes || ''
-	editRecurrence.value = task.recurrence || ''
-	nextTick(() => {
-		editTitleInput.value?.focus()
-	})
-}
-
-function getTaskDate(day: DayKey): string {
-	const idx = ALL_KEYS.indexOf(day)
-	const dates = getWeekDates(currentYear.value, currentWeek.value)
-	return toDateStr(dates[idx])
-}
-
-function handleRecurrenceChange(task: Task, day: DayKey) {
-	const newRecurrence = editRecurrence.value
-	const oldSourceId = task.recurringSourceId
-
-	if (newRecurrence && !oldSourceId) {
-		// Setting recurrence for the first time: create a definition
-		const defId = crypto.randomUUID()
-		const dateStr = getTaskDate(day)
-		const date = weekDates.value[ALL_KEYS.indexOf(day)]
-		recurringTasks.value.push({
-			id: defId,
-			title: editTitle.value.trim() || task.title,
-			notes: editNotes.value,
-			recurrence: newRecurrence as 'daily' | 'weekly' | 'monthly',
-			startDate: dateStr,
-			endDate: '',
-			dayOfWeek: ALL_KEYS.indexOf(day),
-			dayOfMonth: date.getDate(),
-		})
-		task.recurringSourceId = defId
-		task.recurrence = newRecurrence
-		debouncedSaveCustomColumns()
-		// Materialize for remaining days in this week
-		materializeRecurringTasks()
-	} else if (newRecurrence && oldSourceId) {
-		// Updating or re-enabling an existing recurrence definition
-		const def = recurringTasks.value.find((d) => d.id === oldSourceId)
-		if (def) {
-			def.title = editTitle.value.trim() || task.title
-			def.notes = editNotes.value
-			def.recurrence = newRecurrence as 'daily' | 'weekly' | 'monthly'
-			def.endDate = ''
-			task.recurrence = newRecurrence
-			debouncedSaveCustomColumns()
-			materializeRecurringTasks()
-		}
-	} else if (!newRecurrence && oldSourceId) {
-		// Removing recurrence: set endDate and clean up future instances
-		const def = recurringTasks.value.find((d) => d.id === oldSourceId)
-		const dateStr = getTaskDate(day)
-		if (def) {
-			def.endDate = dateStr
-		}
-		task.recurrence = ''
-		// Remove instances from days after endDate in this week
-		const dates = getWeekDates(currentYear.value, currentWeek.value)
-		for (let i = 0; i < ALL_KEYS.length; i++) {
-			const dStr = toDateStr(dates[i])
-			if (dStr > dateStr) {
-				weekData.value.days[ALL_KEYS[i]] = weekData.value.days[ALL_KEYS[i]].filter(
-					(t) => t.recurringSourceId !== oldSourceId,
-				)
-			}
-		}
-		debouncedSaveCustomColumns()
-	}
-}
-
-function saveEdit() {
-	if (!editingTask.value) return
-	const { day, taskId } = editingTask.value
-	if (isCustomColumn(day)) {
-		const col = customColumns.value.find((c) => c.id === day)
-		if (col) {
-			const task = col.tasks.find((t) => t.id === taskId)
-			if (task) {
-				task.title = editTitle.value.trim() || task.title
-				task.notes = editNotes.value
-				task.recurrence = editRecurrence.value
-				debouncedSaveCustomColumns()
-			}
-		}
-	} else {
-		const task = weekData.value.days[day as DayKey].find((t) => t.id === taskId)
-		if (task) {
-			const oldRecurrence = task.recurrence || ''
-			task.title = editTitle.value.trim() || task.title
-			task.notes = editNotes.value
-			// Handle recurrence changes
-			if (editRecurrence.value !== oldRecurrence) {
-				handleRecurrenceChange(task, day as DayKey)
-			} else if (task.recurringSourceId) {
-				// Update definition title/notes even if recurrence didn't change
-				const def = recurringTasks.value.find((d) => d.id === task.recurringSourceId)
-				if (def) {
-					def.title = task.title
-					def.notes = task.notes
-					debouncedSaveCustomColumns()
-				}
-			}
-			debouncedSave()
-		}
-	}
-	editingTask.value = null
-}
-
-function deleteEditingTask() {
-	if (!editingTask.value) return
-	const { day, taskId } = editingTask.value
-	if (isCustomColumn(day)) {
-		deleteCustomTask(day, taskId)
-	} else {
-		// If this is a recurring task, also clean up the definition
-		const task = weekData.value.days[day as DayKey].find((t) => t.id === taskId)
-		if (task?.recurringSourceId) {
-			const sourceId = task.recurringSourceId
-			const dateStr = getTaskDate(day as DayKey)
-			const def = recurringTasks.value.find((d) => d.id === sourceId)
-			if (def) {
-				// Set endDate to the day before so materialization won't recreate the deleted task
-				const prev = new Date(dateStr + 'T00:00:00')
-				prev.setDate(prev.getDate() - 1)
-				def.endDate = toDateStr(prev)
-			}
-			// Remove all instances from this day onward in this week
-			const dates = getWeekDates(currentYear.value, currentWeek.value)
-			for (let i = 0; i < ALL_KEYS.length; i++) {
-				const dStr = toDateStr(dates[i])
-				if (dStr >= dateStr) {
-					weekData.value.days[ALL_KEYS[i]] = weekData.value.days[ALL_KEYS[i]].filter(
-						(t) => t.recurringSourceId !== sourceId,
-					)
-				}
-			}
-			// Save immediately to prevent race with long-poll/notify_push reloads
-			if (saveTimeout) { clearTimeout(saveTimeout); saveTimeout = null }
-			if (customSaveTimeout) { clearTimeout(customSaveTimeout); customSaveTimeout = null }
-			saveCustomColumnsNow()
-			saveWeekNow()
-		} else {
-			deleteTask(day as DayKey, taskId)
-		}
-	}
-	editingTask.value = null
-}
-
+// --- Drag handlers ---
 function onDragChange() {
-	debouncedSave()
-	// Also save custom columns in case a task was dragged out of a custom column
-	debouncedSaveCustomColumns()
-}
-
-function onCustomOrWeekDragChange() {
-	debouncedSave()
-	debouncedSaveCustomColumns()
-}
-
-function prevWeek() {
-	const monday = getWeekMonday(currentYear.value, currentWeek.value)
-	monday.setDate(monday.getDate() - 7)
-	const { year, week } = getISOWeek(monday)
-	currentYear.value = year
-	currentWeek.value = week
-}
-
-function nextWeek() {
-	const monday = getWeekMonday(currentYear.value, currentWeek.value)
-	monday.setDate(monday.getDate() + 7)
-	const { year, week } = getISOWeek(monday)
-	currentYear.value = year
-	currentWeek.value = week
-}
-
-function goToday() {
-	const { year, week } = getISOWeek(new Date())
-	currentYear.value = year
-	currentWeek.value = week
-}
-
-// --- Long-polling: week data ---
-
-function stopWeekPoll() {
-	shouldPollWeek = false
-	weekPollAbortController?.abort()
-	weekPollAbortController = null
-}
-
-async function longPollWeek() {
-	if (!shouldPollWeek) return
-	const controller = new AbortController()
-	weekPollAbortController = controller
-	try {
-		const url = generateUrl('/apps/weekplanner/week/{year}/{week}/poll', {
-			year: String(currentYear.value),
-			week: String(currentWeek.value),
-		})
-		const response = await axios.get<{ changed: boolean; updatedAt: number; data?: unknown }>(
-			`${url}?since=${knownWeekUpdatedAt}`,
-			{ signal: controller.signal, timeout: 35_000 },
-		)
-		if (response.data.changed) {
-			if (saveTimeout === null && !isSaving && !editingTask.value) {
-				knownWeekUpdatedAt = response.data.updatedAt
-				weekData.value = normalizeWeekData(response.data.data)
-				materializeRecurringTasks()
-			}
-		}
-	} catch {
-		if (controller.signal.aborted) return
-		await new Promise((resolve) => setTimeout(resolve, 5_000))
-	}
-	longPollWeek()
-}
-
-// --- Long-polling: custom columns ---
-
-function stopCustomPoll() {
-	shouldPollCustom = false
-	customPollAbortController?.abort()
-	customPollAbortController = null
-}
-
-async function longPollCustom() {
-	if (!shouldPollCustom) return
-	const controller = new AbortController()
-	customPollAbortController = controller
-	try {
-		const url = generateUrl('/apps/weekplanner/custom-columns/poll')
-		const response = await axios.get<{ changed: boolean; updatedAt: number; data?: unknown }>(
-			`${url}?since=${knownCustomUpdatedAt}`,
-			{ signal: controller.signal, timeout: 35_000 },
-		)
-		if (response.data.changed) {
-			if (customSaveTimeout === null && !customSaveInProgress && !editingTask.value) {
-				knownCustomUpdatedAt = response.data.updatedAt
-				applyCustomColumnsData(response.data.data)
-			}
-		}
-	} catch {
-		if (controller.signal.aborted) return
-		await new Promise((resolve) => setTimeout(resolve, 5_000))
-	}
-	longPollCustom()
-}
-
-function applyCustomColumnsData(data: unknown) {
-	if (!data || typeof data !== 'object' || !('columns' in data)) return
-	const typed = data as { columns?: CustomColumn[]; recurringTasks?: RecurringTaskDefinition[] }
-	const cols = typed.columns
-	if (!Array.isArray(cols)) return
-	customColumns.value = cols.map((col) => ({
-		...col,
-		tasks: (col.tasks || []).map((t) => ({ ...t, notes: t.notes || '', recurrence: t.recurrence || '' })),
-	}))
-	const newObj: Record<string, string> = {}
-	for (const col of customColumns.value) {
-		newObj[col.id] = newCustomTasks.value[col.id] || ''
-	}
-	newCustomTasks.value = newObj
-	if (Array.isArray(typed.recurringTasks)) {
-		recurringTasks.value = typed.recurringTasks
-	}
-}
-
-// --- Long-poll lifecycle helpers ---
-
-function startLongPolling() {
-	shouldPollWeek = true
-	longPollWeek()
-	shouldPollCustom = true
-	longPollCustom()
-}
-
-function stopAllPolling() {
-	stopWeekPoll()
-	stopCustomPoll()
-}
-
-// --- notify_push integration ---
-
-async function trySetupNotifyPush(): Promise<boolean> {
-	try {
-		const mod = await import('@nextcloud/notify_push')
-
-		const available = mod.listen('weekplanner_week_update', (_type, body) => {
-			if (!body) return
-			if (Number(body.year) === currentYear.value && Number(body.week) === currentWeek.value) {
-				if (saveTimeout === null && !isSaving && !editingTask.value) {
-					loadWeek()
-				}
-			}
-		})
-
-		if (!available) {
-			return false
-		}
-
-		mod.listen('weekplanner_customcolumns_update', () => {
-			if (customSaveTimeout === null && !customSaveInProgress && !editingTask.value) {
-				loadCustomColumns()
-			}
-		})
-
-		return true
-	} catch {
-		return false
-	}
+	weekPersistence.debouncedSave()
+	columns.debouncedSaveCustomColumns()
 }
 
 // --- Lifecycle ---
+let mounted = false
 
 watch([currentYear, currentWeek], async () => {
-	if (!usingNotifyPush) {
-		stopWeekPoll()
+	if (!polling.isUsingNotifyPush()) {
+		polling.stopWeekPoll()
 	}
-	knownWeekUpdatedAt = 0
-	await loadWeek()
-	if (!usingNotifyPush && mounted) {
-		shouldPollWeek = true
-		longPollWeek()
+	weekPersistence.setKnownUpdatedAt(0)
+	await weekPersistence.loadWeek()
+	if (!polling.isUsingNotifyPush() && mounted) {
+		polling.longPollWeek()
 	}
 })
 
 onMounted(async () => {
-	await Promise.all([loadWeek(), loadCustomColumns()])
-
-	usingNotifyPush = await trySetupNotifyPush()
+	await Promise.all([weekPersistence.loadWeek(), columns.loadCustomColumns()])
+	polling.setUsingNotifyPush(await polling.trySetupNotifyPush())
 	mounted = true
-	if (!usingNotifyPush) {
-		startLongPolling()
+	if (!polling.isUsingNotifyPush()) {
+		polling.startLongPolling()
 	}
 })
 
 onUnmounted(() => {
-	stopAllPolling()
-	if (saveTimeout) clearTimeout(saveTimeout)
-	if (customSaveTimeout) clearTimeout(customSaveTimeout)
+	polling.stopAllPolling()
+	weekPersistence.flushSaveTimeout()
+	columns.flushCustomSaveTimeout()
 })
 </script>
 
@@ -933,7 +364,7 @@ onUnmounted(() => {
 								group="weekGroup"
 								item-key="id"
 								class="task-list"
-								@change="onCustomOrWeekDragChange">
+								@change="onDragChange">
 								<template #item="{ element }: { element: Task }">
 									<div class="task-item" :class="{ done: element.done }">
 										<span class="task-title" @click="openEdit(col.id, element)">
