@@ -199,6 +199,23 @@ function toDateStr(d: Date): string {
 function materializeRecurringTasks() {
 	const dates = getWeekDates(currentYear.value, currentWeek.value)
 	let changed = false
+
+	// Clean up stale recurring instances (definition ended or deleted)
+	for (let i = 0; i < ALL_KEYS.length; i++) {
+		const day = ALL_KEYS[i]
+		const dateStr = toDateStr(dates[i])
+		const before = weekData.value.days[day].length
+		weekData.value.days[day] = weekData.value.days[day].filter((t) => {
+			if (!t.recurringSourceId) return true
+			const def = recurringTasks.value.find((d) => d.id === t.recurringSourceId)
+			if (!def) return false
+			if (def.endDate && dateStr > def.endDate) return false
+			return true
+		})
+		if (weekData.value.days[day].length !== before) changed = true
+	}
+
+	// Materialize new instances
 	for (let i = 0; i < ALL_KEYS.length; i++) {
 		const day = ALL_KEYS[i]
 		const date = dates[i]
@@ -267,25 +284,29 @@ let shouldPollCustom = false
 let usingNotifyPush = false
 let mounted = false
 
+async function saveWeekNow() {
+	isSaving = true
+	try {
+		const url = generateUrl('/apps/weekplanner/week/{year}/{week}', {
+			year: String(currentYear.value),
+			week: String(currentWeek.value),
+		})
+		const response = await axios.put(url, weekData.value)
+		if (typeof response.data?.updatedAt === 'number') {
+			knownWeekUpdatedAt = response.data.updatedAt
+		}
+	} catch {
+		// Save failed silently
+	} finally {
+		isSaving = false
+	}
+}
+
 function debouncedSave() {
 	if (saveTimeout) clearTimeout(saveTimeout)
-	saveTimeout = setTimeout(async () => {
+	saveTimeout = setTimeout(() => {
 		saveTimeout = null
-		isSaving = true
-		try {
-			const url = generateUrl('/apps/weekplanner/week/{year}/{week}', {
-				year: String(currentYear.value),
-				week: String(currentWeek.value),
-			})
-			const response = await axios.put(url, weekData.value)
-			if (typeof response.data?.updatedAt === 'number') {
-				knownWeekUpdatedAt = response.data.updatedAt
-			}
-		} catch {
-			// Save failed silently
-		} finally {
-			isSaving = false
-		}
+		saveWeekNow()
 	}, 300)
 }
 
@@ -320,22 +341,26 @@ async function loadCustomColumns() {
 
 let customSaveTimeout: ReturnType<typeof setTimeout> | null = null
 
+async function saveCustomColumnsNow() {
+	customSaveInProgress = true
+	try {
+		const url = generateUrl('/apps/weekplanner/custom-columns')
+		const response = await axios.put(url, { columns: customColumns.value, recurringTasks: recurringTasks.value })
+		if (typeof response.data?.updatedAt === 'number') {
+			knownCustomUpdatedAt = response.data.updatedAt
+		}
+	} catch {
+		// Save failed silently
+	} finally {
+		customSaveInProgress = false
+	}
+}
+
 function debouncedSaveCustomColumns() {
 	if (customSaveTimeout) clearTimeout(customSaveTimeout)
-	customSaveTimeout = setTimeout(async () => {
+	customSaveTimeout = setTimeout(() => {
 		customSaveTimeout = null
-		customSaveInProgress = true
-		try {
-			const url = generateUrl('/apps/weekplanner/custom-columns')
-			const response = await axios.put(url, { columns: customColumns.value, recurringTasks: recurringTasks.value })
-			if (typeof response.data?.updatedAt === 'number') {
-				knownCustomUpdatedAt = response.data.updatedAt
-			}
-		} catch {
-			// Save failed silently
-		} finally {
-			customSaveInProgress = false
-		}
+		saveCustomColumnsNow()
 	}, 300)
 }
 
@@ -541,7 +566,7 @@ function deleteEditingTask() {
 				prev.setDate(prev.getDate() - 1)
 				def.endDate = toDateStr(prev)
 			}
-			// Remove all instances from this day onward
+			// Remove all instances from this day onward in this week
 			const dates = getWeekDates(currentYear.value, currentWeek.value)
 			for (let i = 0; i < ALL_KEYS.length; i++) {
 				const dStr = toDateStr(dates[i])
@@ -551,8 +576,11 @@ function deleteEditingTask() {
 					)
 				}
 			}
-			debouncedSaveCustomColumns()
-			debouncedSave()
+			// Save immediately to prevent race with long-poll/notify_push reloads
+			if (saveTimeout) { clearTimeout(saveTimeout); saveTimeout = null }
+			if (customSaveTimeout) { clearTimeout(customSaveTimeout); customSaveTimeout = null }
+			saveCustomColumnsNow()
+			saveWeekNow()
 		} else {
 			deleteTask(day as DayKey, taskId)
 		}
