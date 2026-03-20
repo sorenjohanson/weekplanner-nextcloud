@@ -1,4 +1,4 @@
-import type { Task, WeekData, DayKey } from '../types'
+import type { Task, WeekData } from '../types'
 import { ALL_KEYS } from '../types'
 
 export function emptyWeek(): WeekData {
