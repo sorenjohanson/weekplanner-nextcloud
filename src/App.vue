@@ -200,7 +200,7 @@ function materializeRecurringTasks() {
 	const dates = getWeekDates(currentYear.value, currentWeek.value)
 	let changed = false
 
-	// Clean up stale recurring instances (definition ended or deleted)
+	// Clean up stale recurring instances (definition ended, deleted, or no longer matching pattern)
 	for (let i = 0; i < ALL_KEYS.length; i++) {
 		const day = ALL_KEYS[i]
 		const dateStr = toDateStr(dates[i])
@@ -210,6 +210,10 @@ function materializeRecurringTasks() {
 			const def = recurringTasks.value.find((d) => d.id === t.recurringSourceId)
 			if (!def) return false
 			if (def.endDate && dateStr > def.endDate) return false
+			// Remove instances that no longer match the current recurrence pattern
+			// (e.g. after changing from weekly to monthly)
+			if (def.recurrence === 'weekly' && i !== def.dayOfWeek) return false
+			if (def.recurrence === 'monthly' && dates[i].getDate() !== def.dayOfMonth) return false
 			return true
 		})
 		if (weekData.value.days[day].length !== before) changed = true
@@ -483,11 +487,7 @@ function handleRecurrenceChange(task: Task, day: DayKey) {
 			def.title = editTitle.value.trim() || task.title
 			def.notes = editNotes.value
 			def.recurrence = newRecurrence as 'daily' | 'weekly' | 'monthly'
-			// Only clear endDate when re-enabling recurrence that was previously removed,
-			// not when just changing the type (e.g. weekly→monthly), which would undo deletions
-			if (!task.recurrence) {
-				def.endDate = ''
-			}
+			def.endDate = ''
 			task.recurrence = newRecurrence
 			debouncedSaveCustomColumns()
 			materializeRecurringTasks()
