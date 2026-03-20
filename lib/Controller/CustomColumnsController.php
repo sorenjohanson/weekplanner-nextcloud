@@ -52,14 +52,14 @@ class CustomColumnsController extends Controller {
 
 	#[NoAdminRequired]
 	#[FrontpageRoute(verb: 'PUT', url: '/custom-columns')]
-	public function put(array $columns = []): JSONResponse {
+	public function put(array $columns = [], array $recurringTasks = []): JSONResponse {
 		$user = $this->userSession->getUser();
 		if ($user === null) {
 			return new JSONResponse(['error' => 'Not logged in'], Http::STATUS_UNAUTHORIZED);
 		}
 
 		$userId = $user->getUID();
-		$jsonData = json_encode(['columns' => $columns], JSON_UNESCAPED_UNICODE);
+		$jsonData = json_encode(['columns' => $columns, 'recurringTasks' => $recurringTasks], JSON_UNESCAPED_UNICODE);
 
 		$now = time();
 		$existing = $this->mapper->findByUser($userId);
@@ -121,6 +121,7 @@ class CustomColumnsController extends Controller {
 				['id' => 'custom_2', 'title' => '', 'tasks' => []],
 				['id' => 'custom_3', 'title' => '', 'tasks' => []],
 			],
+			'recurringTasks' => [],
 		];
 	}
 }
