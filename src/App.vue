@@ -415,13 +415,7 @@ function openEdit(day: DayKey | string, task: Task) {
 	editingTask.value = { day, taskId: task.id }
 	editTitle.value = task.title
 	editNotes.value = task.notes || ''
-	// Load recurrence from definition if this is a recurring instance
-	if (task.recurringSourceId) {
-		const def = recurringTasks.value.find((d) => d.id === task.recurringSourceId)
-		editRecurrence.value = def ? def.recurrence : (task.recurrence || '')
-	} else {
-		editRecurrence.value = task.recurrence || ''
-	}
+	editRecurrence.value = task.recurrence || ''
 	nextTick(() => {
 		editTitleInput.value?.focus()
 	})
@@ -458,14 +452,16 @@ function handleRecurrenceChange(task: Task, day: DayKey) {
 		// Materialize for remaining days in this week
 		materializeRecurringTasks()
 	} else if (newRecurrence && oldSourceId) {
-		// Updating an existing recurrence definition
+		// Updating or re-enabling an existing recurrence definition
 		const def = recurringTasks.value.find((d) => d.id === oldSourceId)
 		if (def) {
 			def.title = editTitle.value.trim() || task.title
 			def.notes = editNotes.value
 			def.recurrence = newRecurrence as 'daily' | 'weekly' | 'monthly'
+			def.endDate = ''
 			task.recurrence = newRecurrence
 			debouncedSaveCustomColumns()
+			materializeRecurringTasks()
 		}
 	} else if (!newRecurrence && oldSourceId) {
 		// Removing recurrence: set endDate and clean up future instances
@@ -475,7 +471,6 @@ function handleRecurrenceChange(task: Task, day: DayKey) {
 			def.endDate = dateStr
 		}
 		task.recurrence = ''
-		delete task.recurringSourceId
 		// Remove instances from days after endDate in this week
 		const dates = getWeekDates(currentYear.value, currentWeek.value)
 		for (let i = 0; i < ALL_KEYS.length; i++) {
@@ -507,9 +502,7 @@ function saveEdit() {
 	} else {
 		const task = weekData.value.days[day as DayKey].find((t) => t.id === taskId)
 		if (task) {
-			const oldRecurrence = task.recurringSourceId
-				? (recurringTasks.value.find((d) => d.id === task.recurringSourceId)?.recurrence || '')
-				: (task.recurrence || '')
+			const oldRecurrence = task.recurrence || ''
 			task.title = editTitle.value.trim() || task.title
 			task.notes = editNotes.value
 			// Handle recurrence changes
