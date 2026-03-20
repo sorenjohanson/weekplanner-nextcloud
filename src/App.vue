@@ -7,11 +7,14 @@ import draggable from 'vuedraggable'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 
+type Recurrence = '' | 'daily' | 'weekly' | 'monthly'
+
 interface Task {
 	id: string
 	title: string
 	done: boolean
 	notes: string
+	recurrence: Recurrence
 }
 
 type DayKey = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'
@@ -70,6 +73,7 @@ const newCustomTasks = ref<Record<string, string>>({
 const editingTask = ref<{ day: DayKey | string; taskId: string } | null>(null)
 const editTitle = ref('')
 const editNotes = ref('')
+const editRecurrence = ref<Recurrence>('')
 const editTitleInput = ref<HTMLInputElement | null>(null)
 
 function emptyWeek(): WeekData {
@@ -158,6 +162,7 @@ function normalizeWeekData(data: unknown): WeekData {
 					result.days[key] = (days[key] as Task[]).map((t) => ({
 						...t,
 						notes: t.notes || '',
+						recurrence: t.recurrence || '',
 					}))
 				}
 			}
@@ -230,7 +235,7 @@ async function loadCustomColumns() {
 		if (data.columns && Array.isArray(data.columns)) {
 			customColumns.value = data.columns.map((col) => ({
 				...col,
-				tasks: (col.tasks || []).map((t) => ({ ...t, notes: t.notes || '' })),
+				tasks: (col.tasks || []).map((t) => ({ ...t, notes: t.notes || '', recurrence: t.recurrence || '' })),
 			}))
 			// Sync newCustomTasks keys
 			const newObj: Record<string, string> = {}
@@ -275,6 +280,7 @@ function addCustomTask(columnId: string) {
 		title,
 		done: false,
 		notes: '',
+		recurrence: '',
 	})
 	newCustomTasks.value[columnId] = ''
 	debouncedSaveCustomColumns()
@@ -313,6 +319,7 @@ function addTask(day: DayKey) {
 		title,
 		done: false,
 		notes: '',
+		recurrence: '',
 	})
 	newTasks.value[day] = ''
 	debouncedSave()
@@ -339,6 +346,7 @@ function openEdit(day: DayKey | string, task: Task) {
 	editingTask.value = { day, taskId: task.id }
 	editTitle.value = task.title
 	editNotes.value = task.notes || ''
+	editRecurrence.value = task.recurrence || ''
 	nextTick(() => {
 		editTitleInput.value?.focus()
 	})
@@ -354,6 +362,7 @@ function saveEdit() {
 			if (task) {
 				task.title = editTitle.value.trim() || task.title
 				task.notes = editNotes.value
+				task.recurrence = editRecurrence.value
 				debouncedSaveCustomColumns()
 			}
 		}
@@ -362,6 +371,7 @@ function saveEdit() {
 		if (task) {
 			task.title = editTitle.value.trim() || task.title
 			task.notes = editNotes.value
+			task.recurrence = editRecurrence.value
 			debouncedSave()
 		}
 	}
@@ -483,7 +493,7 @@ function applyCustomColumnsData(data: unknown) {
 	if (!Array.isArray(cols)) return
 	customColumns.value = cols.map((col) => ({
 		...col,
-		tasks: (col.tasks || []).map((t) => ({ ...t, notes: t.notes || '' })),
+		tasks: (col.tasks || []).map((t) => ({ ...t, notes: t.notes || '', recurrence: t.recurrence || '' })),
 	}))
 	const newObj: Record<string, string> = {}
 	for (const col of customColumns.value) {
@@ -619,6 +629,15 @@ onUnmounted(() => {
 											fill="currentColor">
 											<path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M14,18H6V16H14V18M18,14H6V12H18V14M13,9V3.5L18.5,9H13Z" />
 										</svg>
+										<svg v-if="element.recurrence"
+											class="task-recurrence-icon"
+											xmlns="http://www.w3.org/2000/svg"
+											viewBox="0 0 24 24"
+											width="16"
+											height="16"
+											fill="currentColor">
+											<path d="M17,17H7V14L3,18L7,22V19H19V13H17M7,7H17V10L21,6L17,2V5H5V11H7V7Z" />
+										</svg>
 										<button
 											class="task-check"
 											:class="{ checked: element.done }"
@@ -719,6 +738,15 @@ onUnmounted(() => {
 												height="20"
 												fill="currentColor">
 												<path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M14,18H6V16H14V18M18,14H6V12H18V14M13,9V3.5L18.5,9H13Z" />
+											</svg>
+											<svg v-if="element.recurrence"
+												class="task-recurrence-icon"
+												xmlns="http://www.w3.org/2000/svg"
+												viewBox="0 0 24 24"
+												width="16"
+												height="16"
+												fill="currentColor">
+												<path d="M17,17H7V14L3,18L7,22V19H19V13H17M7,7H17V10L21,6L17,2V5H5V11H7V7Z" />
 											</svg>
 											<button
 												class="task-check"
@@ -827,6 +855,15 @@ onUnmounted(() => {
 											fill="currentColor">
 											<path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M14,18H6V16H14V18M18,14H6V12H18V14M13,9V3.5L18.5,9H13Z" />
 										</svg>
+										<svg v-if="element.recurrence"
+											class="task-recurrence-icon"
+											xmlns="http://www.w3.org/2000/svg"
+											viewBox="0 0 24 24"
+											width="16"
+											height="16"
+											fill="currentColor">
+											<path d="M17,17H7V14L3,18L7,22V19H19V13H17M7,7H17V10L21,6L17,2V5H5V11H7V7Z" />
+										</svg>
 										<button
 											class="task-check"
 											:class="{ checked: element.done }"
@@ -929,6 +966,24 @@ onUnmounted(() => {
 								class="edit-notes-input"
 								placeholder="Add notes…"
 								rows="3" />
+							<label class="edit-label edit-label-recurrence" for="edit-recurrence">Repeat</label>
+							<select
+								id="edit-recurrence"
+								v-model="editRecurrence"
+								class="edit-recurrence-select">
+								<option value="">
+									None
+								</option>
+								<option value="daily">
+									Daily
+								</option>
+								<option value="weekly">
+									Weekly
+								</option>
+								<option value="monthly">
+									Monthly
+								</option>
+							</select>
 						</div>
 						<div class="edit-dialog-footer">
 							<NcButton type="primary" @click="saveEdit">
@@ -1085,6 +1140,14 @@ onUnmounted(() => {
 .task-notes-icon {
 	flex-shrink: 0;
 	margin-left: 8px;
+	margin-right: 4px;
+	color: var(--color-primary-element);
+	opacity: 0.5;
+}
+
+.task-recurrence-icon {
+	flex-shrink: 0;
+	margin-left: 4px;
 	margin-right: 4px;
 	color: var(--color-primary-element);
 	opacity: 0.5;
@@ -1290,7 +1353,8 @@ onUnmounted(() => {
 	margin-bottom: 6px;
 }
 
-.edit-label-notes {
+.edit-label-notes,
+.edit-label-recurrence {
 	margin-top: 16px;
 }
 
@@ -1330,6 +1394,23 @@ onUnmounted(() => {
 
 .edit-notes-input::placeholder {
 	color: var(--color-text-maxcontrast);
+}
+
+.edit-recurrence-select {
+	width: 100%;
+	padding: 8px 12px;
+	border: 2px solid var(--color-border-dark);
+	border-radius: 6px;
+	font-size: 14px;
+	color: var(--color-main-text);
+	background-color: var(--color-main-background);
+	outline: none;
+	box-sizing: border-box;
+	font-family: inherit;
+}
+
+.edit-recurrence-select:focus {
+	border-color: var(--color-primary-element);
 }
 
 .edit-dialog-footer {
