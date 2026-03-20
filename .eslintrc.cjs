@@ -6,4 +6,12 @@ module.exports = {
 		'jsdoc/require-jsdoc': 'off',
 		'vue/first-attribute-linebreak': 'off',
 	},
+	overrides: [
+		{
+			files: ['src/**/__tests__/**/*.ts'],
+			rules: {
+				'n/no-unpublished-import': 'off',
+			},
+		},
+	],
 }
