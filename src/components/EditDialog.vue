@@ -254,6 +254,8 @@ onMounted(() => {
 .edit-color-swatch {
 	width: 28px;
 	height: 28px;
+	min-width: 28px;
+	min-height: 28px;
 	border-radius: 50%;
 	border: 2px solid var(--color-border-dark);
 	cursor: pointer;
@@ -263,6 +265,8 @@ onMounted(() => {
 	justify-content: center;
 	background: none;
 	transition: border-color 0.15s, transform 0.15s;
+	box-sizing: content-box;
+	flex-shrink: 0;
 }
 
 .edit-color-swatch:hover {
