@@ -104,12 +104,12 @@ onMounted(() => {
 				</div>
 			</div>
 			<div class="edit-dialog-footer">
-				<NcButton type="primary" @click="$emit('save')">
-					Save
-				</NcButton>
 				<button class="edit-delete-btn" @click="$emit('delete')">
 					Delete
 				</button>
+				<NcButton type="primary" @click="$emit('save')">
+					Save
+				</NcButton>
 			</div>
 		</div>
 	</div>
