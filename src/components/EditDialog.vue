@@ -104,12 +104,12 @@ onMounted(() => {
 				</div>
 			</div>
 			<div class="edit-dialog-footer">
-				<NcButton type="primary" @click="$emit('save')">
-					Save
-				</NcButton>
 				<button class="edit-delete-btn" @click="$emit('delete')">
 					Delete
 				</button>
+				<NcButton type="primary" @click="$emit('save')">
+					Save
+				</NcButton>
 			</div>
 		</div>
 	</div>
@@ -202,8 +202,10 @@ onMounted(() => {
 	box-sizing: border-box;
 }
 
+.edit-title-input:hover,
 .edit-title-input:focus {
-	border-color: var(--color-primary-element);
+	border-color: var(--color-primary-element) !important;
+	box-shadow: none !important;
 }
 
 .edit-notes-input {
@@ -220,8 +222,10 @@ onMounted(() => {
 	box-sizing: border-box;
 }
 
+.edit-notes-input:hover,
 .edit-notes-input:focus {
-	border-color: var(--color-primary-element);
+	border-color: var(--color-primary-element) !important;
+	box-shadow: none !important;
 }
 
 .edit-notes-input::placeholder {
@@ -241,8 +245,10 @@ onMounted(() => {
 	font-family: inherit;
 }
 
+.edit-recurrence-select:hover,
 .edit-recurrence-select:focus {
-	border-color: var(--color-primary-element);
+	border-color: var(--color-primary-element) !important;
+	box-shadow: none !important;
 }
 
 .edit-label-color {
@@ -275,10 +281,11 @@ onMounted(() => {
 
 .edit-color-swatch:hover {
 	transform: scale(1.15);
+	border-color: var(--color-primary-element) !important;
 }
 
 .edit-color-swatch.selected {
-	border-color: var(--color-main-text);
+	border-color: var(--color-primary-element) !important;
 }
 
 .edit-color-none {
