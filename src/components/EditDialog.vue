@@ -204,7 +204,8 @@ onMounted(() => {
 
 .edit-title-input:hover,
 .edit-title-input:focus {
-	border-color: var(--color-primary-element);
+	border-color: var(--color-primary-element) !important;
+	box-shadow: none !important;
 }
 
 .edit-notes-input {
@@ -223,7 +224,8 @@ onMounted(() => {
 
 .edit-notes-input:hover,
 .edit-notes-input:focus {
-	border-color: var(--color-primary-element);
+	border-color: var(--color-primary-element) !important;
+	box-shadow: none !important;
 }
 
 .edit-notes-input::placeholder {
@@ -245,7 +247,8 @@ onMounted(() => {
 
 .edit-recurrence-select:hover,
 .edit-recurrence-select:focus {
-	border-color: var(--color-primary-element);
+	border-color: var(--color-primary-element) !important;
+	box-shadow: none !important;
 }
 
 .edit-label-color {
