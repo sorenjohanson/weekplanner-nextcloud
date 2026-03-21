@@ -103,9 +103,13 @@ defineEmits<{
 }
 
 @media (max-width: 768px) {
+	.day-tasks {
+		min-height: 0;
+	}
+
 	.task-list {
 		overflow-y: visible;
-		min-height: 20px;
+		min-height: 40px;
 	}
 
 	.task-add {
