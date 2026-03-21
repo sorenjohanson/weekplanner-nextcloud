@@ -275,7 +275,7 @@ onUnmounted(() => {
 .day-header {
 	display: flex;
 	align-items: baseline;
-	gap: 6px;
+	justify-content: space-between;
 	padding: 4px 12px;
 	border-bottom: 1px solid var(--color-border);
 	flex-shrink: 0;
