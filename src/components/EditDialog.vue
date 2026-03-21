@@ -271,7 +271,6 @@ onMounted(() => {
 
 .edit-color-swatch.selected {
 	border-color: var(--color-main-text);
-	box-shadow: 0 0 0 2px var(--color-main-background), 0 0 0 4px var(--color-main-text);
 }
 
 .edit-color-none {

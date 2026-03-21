@@ -25,6 +25,7 @@ function colorHex(color: string): string | undefined {
 			@click="$emit('edit', task)">
 			{{ task.title }}
 		</span>
+		<span v-if="task.color" class="task-spacer" @click="$emit('edit', task)" />
 		<svg v-if="task.notes"
 			class="task-notes-icon"
 			xmlns="http://www.w3.org/2000/svg"
@@ -124,16 +125,25 @@ function colorHex(color: string): string | undefined {
 }
 
 .task-title {
-	flex: 1;
 	cursor: pointer;
 	font-size: 13px;
 	overflow-wrap: break-word;
+	min-width: 0;
+}
+
+.task-title:not(.task-title-colored) {
+	flex: 1;
 }
 
 .task-title-colored {
 	padding: 2px 8px;
-	border-radius: 12px;
+	border-radius: 8px;
 	color: #000;
+}
+
+.task-spacer {
+	flex: 1;
+	cursor: pointer;
 }
 
 .task-item.done .task-title {
