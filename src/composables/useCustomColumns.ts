@@ -81,6 +81,7 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 			done: false,
 			notes: '',
 			recurrence: '',
+			color: '',
 		})
 		newCustomTasks.value[columnId] = ''
 		debouncedSaveCustomColumns()

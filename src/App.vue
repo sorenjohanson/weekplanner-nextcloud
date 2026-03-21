@@ -39,7 +39,7 @@ const recurring = useRecurringTasks(
 )
 
 const {
-	editingTask, editTitle, editNotes, editRecurrence,
+	editingTask, editTitle, editNotes, editRecurrence, editColor,
 	newTasks, openEdit, saveEdit, deleteEditingTask, addTask, toggleDone,
 } = useTaskEditing(
 	currentYear, currentWeek, weekData, weekDates, recurringTasks,
@@ -196,9 +196,11 @@ onUnmounted(() => {
 					:title="editTitle"
 					:notes="editNotes"
 					:recurrence="editRecurrence"
+					:color="editColor"
 					@update:title="editTitle = $event"
 					@update:notes="editNotes = $event"
 					@update:recurrence="editRecurrence = $event"
+					@update:color="editColor = $event"
 					@save="saveEdit"
 					@delete="deleteEditingTask" />
 			</div>

@@ -1,18 +1,21 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
-import type { Recurrence } from '../types'
+import type { Recurrence, TaskColor } from '../types'
+import { TASK_COLORS } from '../types'
 
 defineProps<{
 	title: string
 	notes: string
 	recurrence: Recurrence
+	color: TaskColor
 }>()
 
 defineEmits<{
 	'update:title': [value: string]
 	'update:notes': [value: string]
 	'update:recurrence': [value: Recurrence]
+	'update:color': [value: TaskColor]
 	save: []
 	delete: []
 }>()
@@ -75,6 +78,26 @@ onMounted(() => {
 						Monthly
 					</option>
 				</select>
+				<label class="edit-label edit-label-color">Color</label>
+				<div class="edit-color-picker">
+					<button
+						class="edit-color-swatch edit-color-none"
+						:class="{ selected: !color }"
+						title="No color"
+						@click="$emit('update:color', '')">
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+							<path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" />
+						</svg>
+					</button>
+					<button
+						v-for="c in TASK_COLORS"
+						:key="c.value"
+						class="edit-color-swatch"
+						:class="{ selected: color === c.value }"
+						:style="{ backgroundColor: c.hex }"
+						:title="c.label"
+						@click="$emit('update:color', c.value)" />
+				</div>
 			</div>
 			<div class="edit-dialog-footer">
 				<NcButton type="primary" @click="$emit('save')">
@@ -216,6 +239,44 @@ onMounted(() => {
 
 .edit-recurrence-select:focus {
 	border-color: var(--color-primary-element);
+}
+
+.edit-label-color {
+	margin-top: 16px;
+}
+
+.edit-color-picker {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.edit-color-swatch {
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	border: 2px solid var(--color-border-dark);
+	cursor: pointer;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: none;
+	transition: border-color 0.15s, transform 0.15s;
+}
+
+.edit-color-swatch:hover {
+	transform: scale(1.15);
+}
+
+.edit-color-swatch.selected {
+	border-color: var(--color-main-text);
+	box-shadow: 0 0 0 2px var(--color-main-background), 0 0 0 4px var(--color-main-text);
+}
+
+.edit-color-none {
+	background-color: var(--color-main-background);
+	color: var(--color-text-maxcontrast);
 }
 
 .edit-dialog-footer {

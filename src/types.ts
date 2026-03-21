@@ -1,11 +1,23 @@
 export type Recurrence = '' | 'daily' | 'weekly' | 'monthly'
 
+export type TaskColor = '' | 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple'
+
+export const TASK_COLORS: { value: TaskColor; label: string; hex: string }[] = [
+	{ value: 'red', label: 'Red', hex: '#FFD4D4' },
+	{ value: 'orange', label: 'Orange', hex: '#FFE4C8' },
+	{ value: 'yellow', label: 'Yellow', hex: '#FFF3C4' },
+	{ value: 'green', label: 'Green', hex: '#D4F5D4' },
+	{ value: 'blue', label: 'Blue', hex: '#D4E8FF' },
+	{ value: 'purple', label: 'Purple', hex: '#E8D4FF' },
+]
+
 export interface Task {
 	id: string
 	title: string
 	done: boolean
 	notes: string
 	recurrence: Recurrence
+	color: TaskColor
 	recurringSourceId?: string
 }
 

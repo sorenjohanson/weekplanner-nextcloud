@@ -1,6 +1,6 @@
 import { ref, nextTick } from 'vue'
 import type { Ref, ComputedRef } from 'vue'
-import type { Recurrence, Task, RecurringTaskDefinition, DayKey, WeekData, CustomColumn } from '../types'
+import type { Recurrence, TaskColor, Task, RecurringTaskDefinition, DayKey, WeekData, CustomColumn } from '../types'
 import { ALL_KEYS } from '../types'
 import { getWeekDates, toDateStr } from '../utils/dateUtils'
 
@@ -24,6 +24,7 @@ export function useTaskEditing(
 	const editTitle = ref('')
 	const editNotes = ref('')
 	const editRecurrence = ref<Recurrence>('')
+	const editColor = ref<TaskColor>('')
 	const editTitleInput = ref<HTMLInputElement | null>(null)
 
 	const newTasks = ref<Record<DayKey, string>>({
@@ -45,6 +46,7 @@ export function useTaskEditing(
 		editTitle.value = task.title
 		editNotes.value = task.notes || ''
 		editRecurrence.value = task.recurrence || ''
+		editColor.value = task.color || ''
 		nextTick(() => {
 			editTitleInput.value?.focus()
 		})
@@ -124,6 +126,7 @@ export function useTaskEditing(
 					task.title = editTitle.value.trim() || task.title
 					task.notes = editNotes.value
 					task.recurrence = editRecurrence.value
+					task.color = editColor.value
 					debouncedSaveCustomColumns()
 				}
 			}
@@ -133,6 +136,7 @@ export function useTaskEditing(
 				const oldRecurrence = task.recurrence || ''
 				task.title = editTitle.value.trim() || task.title
 				task.notes = editNotes.value
+				task.color = editColor.value
 				// Handle recurrence changes
 				if (editRecurrence.value !== oldRecurrence) {
 					handleRecurrenceChange(task, day as DayKey)
@@ -197,6 +201,7 @@ export function useTaskEditing(
 			done: false,
 			notes: '',
 			recurrence: '',
+			color: '',
 		})
 		newTasks.value[day] = ''
 		debouncedSave()
@@ -215,6 +220,7 @@ export function useTaskEditing(
 		editTitle,
 		editNotes,
 		editRecurrence,
+		editColor,
 		editTitleInput,
 		newTasks,
 		openEdit,
