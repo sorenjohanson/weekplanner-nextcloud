@@ -281,11 +281,11 @@ onMounted(() => {
 
 .edit-color-swatch:hover {
 	transform: scale(1.15);
-	border-color: var(--color-primary-element);
+	border-color: var(--color-primary-element) !important;
 }
 
 .edit-color-swatch.selected {
-	border-color: var(--color-primary-element);
+	border-color: var(--color-primary-element) !important;
 }
 
 .edit-color-none {
