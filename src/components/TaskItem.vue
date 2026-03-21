@@ -107,7 +107,7 @@ function colorHex(color: string): string | undefined {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 4px 12px;
+	padding: 2px 8px;
 	margin: 0;
 	border-radius: 4px;
 	cursor: grab;

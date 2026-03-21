@@ -59,13 +59,13 @@ defineEmits<{
 .task-list {
 	flex: 1;
 	min-height: 0;
-	padding: 4px;
+	padding: 2px;
 	overflow-y: auto;
 }
 
 .task-add {
 	display: flex;
-	padding: 4px;
+	padding: 2px 4px;
 	gap: 4px;
 	flex-shrink: 0;
 	border-top: 1px solid var(--color-border-dark);
@@ -78,7 +78,7 @@ defineEmits<{
 	flex: 1;
 	border: none;
 	background: transparent;
-	padding: 6px 8px;
+	padding: 4px 8px;
 	font-size: 13px;
 	color: var(--color-main-text);
 	outline: none;

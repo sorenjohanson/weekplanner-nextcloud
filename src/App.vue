@@ -149,7 +149,7 @@ onUnmounted(() => {
 							v-for="day in WEEKEND_KEYS"
 							:key="day"
 							class="weekend-half">
-							<div class="day-header" :class="{ 'is-today': isToday(day) }">
+							<div class="day-header day-header-inline" :class="{ 'is-today': isToday(day) }">
 								<span class="day-name">{{ DAY_LABELS[day] }}</span>
 								<span class="day-date">{{ formatDate(day) }}</span>
 							</div>
@@ -214,6 +214,7 @@ onUnmounted(() => {
 	flex-direction: column;
 	height: 100%;
 	padding: 16px;
+	overflow-y: auto;
 }
 
 .weekplanner-header {
@@ -240,8 +241,9 @@ onUnmounted(() => {
 	display: grid;
 	grid-template-columns: repeat(5, 1fr) 0.8fr;
 	gap: 1px;
-	flex: 1;
-	min-height: 0;
+	height: 70vh;
+	min-height: 400px;
+	flex-shrink: 0;
 	background-color: var(--color-border);
 	border: 1px solid var(--color-border);
 	border-radius: 8px 8px 0 0;
@@ -271,7 +273,10 @@ onUnmounted(() => {
 }
 
 .day-header {
-	padding: 8px 12px;
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+	padding: 4px 12px;
 	border-bottom: 1px solid var(--color-border);
 	flex-shrink: 0;
 }
@@ -281,8 +286,7 @@ onUnmounted(() => {
 }
 
 .day-name {
-	display: block;
-	font-size: 14px;
+	font-size: 13px;
 	font-weight: 600;
 	color: var(--color-main-text);
 }
@@ -293,9 +297,12 @@ onUnmounted(() => {
 }
 
 .day-date {
-	display: block;
-	font-size: 12px;
+	font-size: 11px;
 	color: var(--color-text-maxcontrast);
+}
+
+.day-header-inline {
+	flex-direction: row;
 }
 
 /* Custom columns */
