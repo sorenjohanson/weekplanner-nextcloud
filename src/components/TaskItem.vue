@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Task } from '../types'
+import { TASK_COLORS } from '../types'
 
 defineProps<{
 	task: Task
@@ -9,13 +10,22 @@ defineEmits<{
 	edit: [task: Task]
 	toggleDone: [taskId: string]
 }>()
+
+function colorHex(color: string): string | undefined {
+	return TASK_COLORS.find((c) => c.value === color)?.hex
+}
 </script>
 
 <template>
 	<div class="task-item" :class="{ done: task.done }">
-		<span class="task-title" @click="$emit('edit', task)">
+		<span
+			class="task-title"
+			:class="{ 'task-title-colored': task.color }"
+			:style="task.color ? { backgroundColor: colorHex(task.color) } : undefined"
+			@click="$emit('edit', task)">
 			{{ task.title }}
 		</span>
+		<span v-if="task.color" class="task-spacer" @click="$emit('edit', task)" />
 		<svg v-if="task.notes"
 			class="task-notes-icon"
 			xmlns="http://www.w3.org/2000/svg"
@@ -115,10 +125,25 @@ defineEmits<{
 }
 
 .task-title {
-	flex: 1;
 	cursor: pointer;
 	font-size: 13px;
 	overflow-wrap: break-word;
+	min-width: 0;
+}
+
+.task-title:not(.task-title-colored) {
+	flex: 1;
+}
+
+.task-title-colored {
+	padding: 2px 8px;
+	border-radius: 8px;
+	color: #000;
+}
+
+.task-spacer {
+	flex: 1;
+	cursor: pointer;
 }
 
 .task-item.done .task-title {

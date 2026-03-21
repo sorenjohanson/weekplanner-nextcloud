@@ -90,7 +90,7 @@ describe('useTaskEditing', () => {
 	describe('toggleDone', () => {
 		it('toggles the done state of a task', () => {
 			const week = emptyWeek()
-			const task: Task = { id: 't1', title: 'Test', done: false, notes: '', recurrence: '' }
+			const task: Task = { id: 't1', title: 'Test', done: false, notes: '', recurrence: '', color: '' }
 			week.days.monday.push(task)
 			const { toggleDone, weekData, debouncedSave } = setup({ weekOverride: week })
 
@@ -107,7 +107,7 @@ describe('useTaskEditing', () => {
 	describe('openEdit / saveEdit', () => {
 		it('opens edit dialog with task data', () => {
 			const week = emptyWeek()
-			const task: Task = { id: 't1', title: 'Hello', done: false, notes: 'some notes', recurrence: 'weekly' }
+			const task: Task = { id: 't1', title: 'Hello', done: false, notes: 'some notes', recurrence: 'weekly', color: '' }
 			week.days.wednesday.push(task)
 			const { openEdit, editingTask, editTitle, editNotes, editRecurrence } = setup({ weekOverride: week })
 
@@ -121,7 +121,7 @@ describe('useTaskEditing', () => {
 
 		it('saves edited title and notes', () => {
 			const week = emptyWeek()
-			const task: Task = { id: 't1', title: 'Old', done: false, notes: '', recurrence: '' }
+			const task: Task = { id: 't1', title: 'Old', done: false, notes: '', recurrence: '', color: '' }
 			week.days.friday.push(task)
 			const { openEdit, saveEdit, editTitle, editNotes, weekData, editingTask, debouncedSave } = setup({ weekOverride: week })
 
@@ -138,7 +138,7 @@ describe('useTaskEditing', () => {
 
 		it('does not save empty title — keeps original', () => {
 			const week = emptyWeek()
-			const task: Task = { id: 't1', title: 'Original', done: false, notes: '', recurrence: '' }
+			const task: Task = { id: 't1', title: 'Original', done: false, notes: '', recurrence: '', color: '' }
 			week.days.monday.push(task)
 			const { openEdit, saveEdit, editTitle, weekData } = setup({ weekOverride: week })
 
@@ -153,7 +153,7 @@ describe('useTaskEditing', () => {
 	describe('saveEdit with recurrence changes', () => {
 		it('creates a recurring definition when setting recurrence', () => {
 			const week = emptyWeek()
-			const task: Task = { id: 't1', title: 'Standup', done: false, notes: '', recurrence: '' }
+			const task: Task = { id: 't1', title: 'Standup', done: false, notes: '', recurrence: '', color: '' }
 			week.days.wednesday.push(task)
 			const {
 				openEdit, saveEdit, editRecurrence, recurringTasks,
@@ -182,6 +182,7 @@ describe('useTaskEditing', () => {
 				done: false,
 				notes: '',
 				recurrence: 'daily',
+				color: '',
 				recurringSourceId: defId,
 			}
 			week.days.wednesday.push(task)
@@ -192,6 +193,7 @@ describe('useTaskEditing', () => {
 				done: false,
 				notes: '',
 				recurrence: 'daily',
+				color: '',
 				recurringSourceId: defId,
 			})
 			week.days.friday.push({
@@ -200,6 +202,7 @@ describe('useTaskEditing', () => {
 				done: false,
 				notes: '',
 				recurrence: 'daily',
+				color: '',
 				recurringSourceId: defId,
 			})
 			const defs: RecurringTaskDefinition[] = [{
@@ -235,6 +238,7 @@ describe('useTaskEditing', () => {
 				done: false,
 				notes: '',
 				recurrence: 'daily',
+				color: '',
 				recurringSourceId: defId,
 			}
 			week.days.wednesday.push(task)
@@ -270,6 +274,7 @@ describe('useTaskEditing', () => {
 				done: false,
 				notes: 'old notes',
 				recurrence: 'weekly',
+				color: '',
 				recurringSourceId: defId,
 			}
 			week.days.friday.push(task)
@@ -303,7 +308,7 @@ describe('useTaskEditing', () => {
 			const columns: CustomColumn[] = [{
 				id: 'custom_1',
 				title: 'Someday',
-				tasks: [{ id: 't1', title: 'Old', done: false, notes: '', recurrence: '' }],
+				tasks: [{ id: 't1', title: 'Old', done: false, notes: '', recurrence: '', color: '' }],
 			}]
 			const { openEdit, saveEdit, editTitle, editNotes, customColumns, debouncedSaveCustomColumns } = setup({ columns })
 
@@ -321,7 +326,7 @@ describe('useTaskEditing', () => {
 	describe('deleteEditingTask', () => {
 		it('deletes a regular task', () => {
 			const week = emptyWeek()
-			const task: Task = { id: 't1', title: 'Delete me', done: false, notes: '', recurrence: '' }
+			const task: Task = { id: 't1', title: 'Delete me', done: false, notes: '', recurrence: '', color: '' }
 			week.days.tuesday.push(task)
 			const { openEdit, deleteEditingTask, weekData, editingTask, debouncedSave } = setup({ weekOverride: week })
 
@@ -342,6 +347,7 @@ describe('useTaskEditing', () => {
 				done: false,
 				notes: '',
 				recurrence: 'daily',
+				color: '',
 				recurringSourceId: defId,
 			}
 			week.days.wednesday.push(task)
@@ -351,6 +357,7 @@ describe('useTaskEditing', () => {
 				done: false,
 				notes: '',
 				recurrence: 'daily',
+				color: '',
 				recurringSourceId: defId,
 			})
 			week.days.friday.push({
@@ -359,6 +366,7 @@ describe('useTaskEditing', () => {
 				done: false,
 				notes: '',
 				recurrence: 'daily',
+				color: '',
 				recurringSourceId: defId,
 			})
 			// Monday and Tuesday have instances too
@@ -368,6 +376,7 @@ describe('useTaskEditing', () => {
 				done: false,
 				notes: '',
 				recurrence: 'daily',
+				color: '',
 				recurringSourceId: defId,
 			})
 			const defs: RecurringTaskDefinition[] = [{
@@ -407,7 +416,7 @@ describe('useTaskEditing', () => {
 			const columns: CustomColumn[] = [{
 				id: 'custom_1',
 				title: 'Someday',
-				tasks: [{ id: 't1', title: 'Custom task', done: false, notes: '', recurrence: '' }],
+				tasks: [{ id: 't1', title: 'Custom task', done: false, notes: '', recurrence: '', color: '' }],
 			}]
 			const { openEdit, deleteEditingTask, deleteCustomTask, editingTask } = setup({ columns })
 

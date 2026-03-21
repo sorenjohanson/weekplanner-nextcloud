@@ -52,6 +52,7 @@ class CustomColumnsControllerTest extends TestCase {
 				['id' => 'custom_2', 'title' => '', 'tasks' => []],
 				['id' => 'custom_3', 'title' => '', 'tasks' => []],
 			],
+			'recurringTasks' => [],
 		];
 	}
 

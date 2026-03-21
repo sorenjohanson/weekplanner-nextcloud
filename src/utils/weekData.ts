@@ -27,6 +27,7 @@ export function normalizeWeekData(data: unknown): WeekData {
 							...t,
 							notes: t.notes || '',
 							recurrence: t.recurrence || '',
+							color: t.color || '',
 						}
 						if (t.recurringSourceId) {
 							task.recurringSourceId = t.recurringSourceId

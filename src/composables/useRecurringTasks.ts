@@ -60,6 +60,7 @@ export function useRecurringTasks(
 						done: false,
 						notes: def.notes,
 						recurrence: def.recurrence,
+						color: '',
 						recurringSourceId: def.id,
 					})
 					changed = true
