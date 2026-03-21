@@ -202,6 +202,7 @@ onMounted(() => {
 	box-sizing: border-box;
 }
 
+.edit-title-input:hover,
 .edit-title-input:focus {
 	border-color: var(--color-primary-element);
 }
@@ -220,6 +221,7 @@ onMounted(() => {
 	box-sizing: border-box;
 }
 
+.edit-notes-input:hover,
 .edit-notes-input:focus {
 	border-color: var(--color-primary-element);
 }
@@ -241,6 +243,7 @@ onMounted(() => {
 	font-family: inherit;
 }
 
+.edit-recurrence-select:hover,
 .edit-recurrence-select:focus {
 	border-color: var(--color-primary-element);
 }
@@ -275,10 +278,11 @@ onMounted(() => {
 
 .edit-color-swatch:hover {
 	transform: scale(1.15);
+	border-color: var(--color-primary-element);
 }
 
 .edit-color-swatch.selected {
-	border-color: var(--color-main-text);
+	border-color: var(--color-primary-element);
 }
 
 .edit-color-none {
