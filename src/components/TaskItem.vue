@@ -139,6 +139,7 @@ function colorHex(color: string): string | undefined {
 	padding: 2px 8px;
 	border-radius: 8px;
 	color: #000;
+	margin-right: 4px;
 }
 
 .task-spacer {
