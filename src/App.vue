@@ -60,6 +60,7 @@ const polling = usePolling({
 	materializeRecurringTasks: recurring.materializeRecurringTasks,
 	applyCustomColumnsData: columns.applyCustomColumnsData,
 	isWeekSaveIdle: weekPersistence.isSaveIdle,
+	isWeekLoadIdle: weekPersistence.isLoadIdle,
 	isCustomSaveIdle: columns.isSaveIdle,
 	getWeekKnownUpdatedAt: weekPersistence.getKnownUpdatedAt,
 	setWeekKnownUpdatedAt: weekPersistence.setKnownUpdatedAt,
