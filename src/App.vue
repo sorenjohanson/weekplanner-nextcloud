@@ -369,12 +369,15 @@ onUnmounted(() => {
 		flex-direction: column;
 		gap: 0;
 		flex: none;
+		height: auto;
+		min-height: unset;
 		overflow: visible;
 		border-radius: 8px 8px 0 0;
 	}
 
-	.week-grid .day-column {
-		min-height: auto;
+	.week-grid .day-column,
+	.week-grid .weekend-half {
+		min-height: 80px;
 	}
 
 	.week-grid .weekend-column {
