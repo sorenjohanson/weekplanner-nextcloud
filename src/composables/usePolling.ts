@@ -14,6 +14,7 @@ interface PollDeps {
 	materializeRecurringTasks: () => void
 	applyCustomColumnsData: (data: unknown) => void
 	isWeekSaveIdle: () => boolean
+	isWeekLoadIdle: () => boolean
 	isCustomSaveIdle: () => boolean
 	getWeekKnownUpdatedAt: () => number
 	setWeekKnownUpdatedAt: (val: number) => void
@@ -117,7 +118,7 @@ export function usePolling(deps: PollDeps) {
 			const available = mod.listen('weekplanner_week_update', (_type, body) => {
 				if (!body) return
 				if (Number(body.year) === deps.currentYear.value && Number(body.week) === deps.currentWeek.value) {
-					if (deps.isWeekSaveIdle() && !deps.editingTask.value) {
+					if (deps.isWeekSaveIdle() && deps.isWeekLoadIdle() && !deps.editingTask.value) {
 						deps.loadWeek()
 					}
 				}
