@@ -23,7 +23,10 @@ defineEmits<{
 const titleInput = ref<HTMLInputElement | null>(null)
 
 onMounted(() => {
-	titleInput.value?.focus()
+	const isMobile = window.matchMedia('(max-width: 768px)').matches
+	if (!isMobile) {
+		titleInput.value?.focus()
+	}
 })
 </script>
 

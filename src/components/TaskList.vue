@@ -25,6 +25,8 @@ defineEmits<{
 			group="weekGroup"
 			item-key="id"
 			class="task-list"
+			:delay="200"
+			:delay-on-touch-only="true"
 			@update:model-value="$emit('update:tasks', $event)"
 			@change="$emit('change')">
 			<template #item="{ element }: { element: Task }">
@@ -113,7 +115,7 @@ defineEmits<{
 	}
 
 	.task-add {
-		border-bottom: 1px solid var(--color-border);
+		border-bottom: 3px solid var(--color-border-dark);
 	}
 }
 </style>
