@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref } from 'vue'
+import { listen } from '@nextcloud/notify_push'
 import { usePolling } from '../usePolling'
 import { emptyWeek } from '../../utils/weekData'
 
@@ -14,8 +15,6 @@ vi.mock('@nextcloud/axios', () => ({
 vi.mock('@nextcloud/router', () => ({
 	generateUrl: () => '/mock/url',
 }))
-
-import { listen } from '@nextcloud/notify_push'
 const mockListen = vi.mocked(listen as (event: string, cb: (type: string, body: unknown) => void) => boolean)
 
 const YEAR = 2026
