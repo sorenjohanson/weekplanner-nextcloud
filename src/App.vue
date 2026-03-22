@@ -27,7 +27,7 @@ const {
 
 const weekPersistence = useWeekPersistence(
 	currentYear, currentWeek, weekData,
-	() => recurring.materializeRecurringTasks(),
+	() => { if (initialLoadDone) recurring.materializeRecurringTasks() },
 )
 
 const columns = useCustomColumns(recurringTasks)
@@ -76,6 +76,7 @@ function onDragChange() {
 
 // --- Lifecycle ---
 let mounted = false
+let initialLoadDone = false
 
 watch([currentYear, currentWeek], async () => {
 	if (!polling.isUsingNotifyPush()) {
@@ -90,6 +91,7 @@ watch([currentYear, currentWeek], async () => {
 
 onMounted(async () => {
 	await Promise.all([weekPersistence.loadWeek(), columns.loadCustomColumns()])
+	initialLoadDone = true
 	recurring.materializeRecurringTasks()
 	polling.setUsingNotifyPush(await polling.trySetupNotifyPush())
 	mounted = true
