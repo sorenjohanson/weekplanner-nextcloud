@@ -111,7 +111,7 @@ defineEmits<{
 
 	.task-list {
 		overflow-y: visible;
-		min-height: 40px;
+		min-height: 100px;
 	}
 
 	.task-add {
