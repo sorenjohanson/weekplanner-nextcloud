@@ -90,6 +90,7 @@ watch([currentYear, currentWeek], async () => {
 
 onMounted(async () => {
 	await Promise.all([weekPersistence.loadWeek(), columns.loadCustomColumns()])
+	recurring.materializeRecurringTasks()
 	polling.setUsingNotifyPush(await polling.trySetupNotifyPush())
 	mounted = true
 	if (!polling.isUsingNotifyPush()) {
