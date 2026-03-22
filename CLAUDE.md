@@ -18,5 +18,7 @@ This is enforced by CI via the `block-unconventional-commits` workflow.
 
 ## CI Checks
 
-- **npm lint** (`npm run lint`): ESLint for TypeScript/Vue sources
+- **pnpm lint** (`pnpm run lint`): ESLint for TypeScript/Vue sources
 - **psalm** (`vendor/bin/psalm`): Static analysis for PHP code
+
+Always use pnpm!
