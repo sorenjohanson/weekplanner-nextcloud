@@ -50,7 +50,7 @@ export function usePolling(deps: PollDeps) {
 				`${url}?since=${deps.getWeekKnownUpdatedAt()}`,
 				{ signal: controller.signal, timeout: 35_000 },
 			)
-			if (response.data.changed) {
+			if (response.data.changed && response.data.data != null) {
 				if (deps.isWeekSaveIdle() && !deps.editingTask.value) {
 					deps.setWeekKnownUpdatedAt(response.data.updatedAt)
 					deps.weekData.value = normalizeWeekData(response.data.data)
