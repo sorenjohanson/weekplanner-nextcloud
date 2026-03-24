@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref } from 'vue'
+import axios from '@nextcloud/axios'
 import { listen } from '@nextcloud/notify_push'
 import { usePolling } from '../usePolling'
 import { emptyWeek } from '../../utils/weekData'
+import type { WeekData } from '../../types'
 
 vi.mock('@nextcloud/notify_push', () => ({
 	listen: vi.fn().mockReturnValue(true),
@@ -16,6 +18,7 @@ vi.mock('@nextcloud/router', () => ({
 	generateUrl: () => '/mock/url',
 }))
 const mockListen = vi.mocked(listen as (event: string, cb: (type: string, body: unknown) => void) => boolean)
+const mockGet = vi.mocked(axios.get)
 
 const YEAR = 2026
 const WEEK = 12
@@ -126,6 +129,61 @@ describe('usePolling', () => {
 			fireWeekUpdate(null)
 
 			expect(loadWeek).not.toHaveBeenCalled()
+		})
+	})
+
+	describe('longPollWeek', () => {
+		function setupWithTasks() {
+			const weekData = ref<WeekData>({
+				days: {
+					monday: [{ id: '1', title: 'My Task', done: false, notes: '', recurrence: '', color: '' }],
+					tuesday: [],
+					wednesday: [],
+					thursday: [],
+					friday: [],
+					saturday: [],
+					sunday: [],
+				},
+			})
+			const materializeRecurringTasks = vi.fn()
+
+			const polling = usePolling({
+				currentYear: ref(YEAR),
+				currentWeek: ref(WEEK),
+				weekData,
+				editingTask: ref(null),
+				loadWeek: vi.fn(),
+				loadCustomColumns: vi.fn(),
+				materializeRecurringTasks,
+				applyCustomColumnsData: vi.fn(),
+				isWeekSaveIdle: () => true,
+				isWeekLoadIdle: () => true,
+				isCustomSaveIdle: () => true,
+				getWeekKnownUpdatedAt: vi.fn().mockReturnValue(0),
+				setWeekKnownUpdatedAt: vi.fn(),
+				getCustomKnownUpdatedAt: vi.fn().mockReturnValue(0),
+				setCustomKnownUpdatedAt: vi.fn(),
+			})
+
+			return { polling, weekData, materializeRecurringTasks }
+		}
+
+		it('does not wipe regular tasks when server returns changed=true with no data field', async () => {
+			const { polling, weekData } = setupWithTasks()
+
+			let resolveGet!: (val: unknown) => void
+			mockGet
+				.mockImplementationOnce(() => new Promise(resolve => { resolveGet = resolve }))
+				.mockReturnValue(new Promise(() => {})) // subsequent calls never resolve
+
+			polling.startLongPolling()
+			resolveGet({ data: { changed: true, updatedAt: 123 } }) // no data field
+			await Promise.resolve()
+			await Promise.resolve()
+
+			expect(weekData.value.days.monday).toHaveLength(1)
+
+			polling.stopAllPolling()
 		})
 	})
 })
