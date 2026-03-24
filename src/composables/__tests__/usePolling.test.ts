@@ -137,7 +137,12 @@ describe('usePolling', () => {
 			const weekData = ref<WeekData>({
 				days: {
 					monday: [{ id: '1', title: 'My Task', done: false, notes: '', recurrence: '', color: '' }],
-					tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: [],
+					tuesday: [],
+					wednesday: [],
+					thursday: [],
+					friday: [],
+					saturday: [],
+					sunday: [],
 				},
 			})
 			const materializeRecurringTasks = vi.fn()
