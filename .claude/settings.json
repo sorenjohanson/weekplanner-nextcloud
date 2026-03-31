@@ -1,0 +1,51 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cmd=$(python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('command',''))\"); if echo \"$cmd\" | grep -qE '^\\s*(npm|yarn)\\s'; then printf '{\"continue\":false,\"stopReason\":\"Use pnpm instead of npm/yarn.\"}'; exit 0; fi"
+          },
+          {
+            "type": "command",
+            "command": "cmd=$(python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('command',''))\"); if echo \"$cmd\" | grep -qE 'git push.*(--force\\b|-f\\b)'; then printf '{\"continue\":false,\"stopReason\":\"Force pushing is not allowed. This is a public repository — rewriting shared history breaks contributors who have already pulled.\"}'; exit 0; fi"
+          },
+          {
+            "type": "command",
+            "statusMessage": "Checking commit message format...",
+            "command": "python3 .claude/hooks/check-commit-msg.py"
+          },
+          {
+            "type": "command",
+            "statusMessage": "Checking for debug statements...",
+            "command": "python3 .claude/hooks/check-debug-statements.py"
+          },
+          {
+            "type": "command",
+            "statusMessage": "Running tests, lint and psalm before commit...",
+            "command": "cmd=$(python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('command',''))\"); if echo \"$cmd\" | grep -q 'git commit'; then if ! pnpm test 2>&1; then printf '{\"continue\":false,\"stopReason\":\"Tests failed — fix failing tests before committing\"}'; exit 0; fi; if ! pnpm run lint 2>&1; then printf '{\"continue\":false,\"stopReason\":\"pnpm lint failed — fix errors before committing\"}'; exit 0; fi; if [ -x vendor/bin/psalm ] && ! vendor/bin/psalm 2>&1; then printf '{\"continue\":false,\"stopReason\":\"psalm static analysis failed — fix errors before committing\"}'; exit 0; fi; fi"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "statusMessage": "Checking version sync...",
+            "command": "python3 .claude/hooks/check-version-sync.py"
+          },
+          {
+            "type": "command",
+            "statusMessage": "Checking version bump...",
+            "command": "python3 .claude/hooks/check-version-bump.py"
+          }
+        ]
+      }
+    ]
+  }
+}
