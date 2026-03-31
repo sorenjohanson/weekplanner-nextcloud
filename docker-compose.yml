@@ -1,6 +1,6 @@
 services:
   nextcloud:
-    image: nextcloud:32
+    image: nextcloud:33
     entrypoint: /custom-entrypoint.sh
     ports:
       - "8080:80"
@@ -26,7 +26,7 @@ services:
       - nc_net
 
   notify_push:
-    image: nextcloud:32
+    image: nextcloud:33
     entrypoint: /notify-push-entrypoint.sh
     # Detect architecture at runtime so this works on both x86_64 and aarch64 (Apple Silicon).
     # Wait for the notify_push binary to appear (installed by the nextcloud container), then run it.
