@@ -55,14 +55,11 @@ defineEmits<{
 	flex: 1;
 	display: flex;
 	flex-direction: column;
-	min-height: 0;
 }
 
 .task-list {
 	flex: 1;
-	min-height: 0;
 	padding: 2px;
-	overflow-y: auto;
 }
 
 .task-add {
@@ -105,12 +102,7 @@ defineEmits<{
 }
 
 @media (max-width: 768px) {
-	.day-tasks {
-		min-height: 0;
-	}
-
 	.task-list {
-		overflow-y: visible;
 		min-height: 100px;
 	}
 

@@ -244,14 +244,12 @@ onUnmounted(() => {
 .week-grid {
 	display: grid;
 	grid-template-columns: repeat(5, 1fr) 0.8fr;
+	grid-template-rows: minmax(480px, auto);
 	gap: 1px;
-	height: 70vh;
-	min-height: 400px;
 	flex-shrink: 0;
 	background-color: var(--color-border);
 	border: 1px solid var(--color-border);
 	border-radius: 8px 8px 0 0;
-	overflow: hidden;
 }
 
 .day-column {
@@ -313,9 +311,8 @@ onUnmounted(() => {
 .custom-columns-grid {
 	display: grid;
 	grid-template-columns: repeat(5, 1fr) 0.8fr;
+	grid-template-rows: minmax(280px, auto);
 	gap: 1px;
-	height: 30vh;
-	min-height: 200px;
 	flex-shrink: 0;
 	background-color: var(--color-border);
 	border: 1px solid var(--color-border);
