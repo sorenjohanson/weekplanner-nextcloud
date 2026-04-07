@@ -77,12 +77,26 @@ function onDragChange() {
 	// Check custom columns: recurring tasks moved here need an exception on their original date
 	for (const col of customColumns.value) {
 		for (const task of col.tasks) {
-			if (task.recurringSourceId && task.recurringOriginalDate) {
-				const def = recurringTasks.value.find((d) => d.id === task.recurringSourceId)
-				if (def && !def.exceptionDates.includes(task.recurringOriginalDate)) {
-					def.exceptionDates.push(task.recurringOriginalDate)
-					definitionsChanged = true
+			if (!task.recurringSourceId) continue
+			const def = recurringTasks.value.find((d) => d.id === task.recurringSourceId)
+			if (!def) continue
+			// Backfill recurringOriginalDate for pre-existing instances
+			if (!task.recurringOriginalDate) {
+				for (let i = 0; i < ALL_KEYS.length; i++) {
+					const ds = toDateStr(dates[i])
+					let matches = false
+					if (def.recurrence === 'daily') matches = true
+					else if (def.recurrence === 'weekly') matches = i === def.dayOfWeek
+					else if (def.recurrence === 'monthly') matches = dates[i].getDate() === def.dayOfMonth
+					if (matches && ds >= def.startDate && (!def.endDate || ds <= def.endDate)) {
+						task.recurringOriginalDate = ds
+						break
+					}
 				}
+			}
+			if (task.recurringOriginalDate && !def.exceptionDates.includes(task.recurringOriginalDate)) {
+				def.exceptionDates.push(task.recurringOriginalDate)
+				definitionsChanged = true
 			}
 		}
 	}
@@ -92,9 +106,13 @@ function onDragChange() {
 		const day = ALL_KEYS[i]
 		const dateStr = toDateStr(dates[i])
 		for (const task of weekData.value.days[day]) {
-			if (!task.recurringSourceId || !task.recurringOriginalDate) continue
+			if (!task.recurringSourceId) continue
 			const def = recurringTasks.value.find((d) => d.id === task.recurringSourceId)
 			if (!def) continue
+			// Backfill recurringOriginalDate for pre-existing instances
+			if (!task.recurringOriginalDate) {
+				task.recurringOriginalDate = dateStr
+			}
 
 			if (task.recurringOriginalDate !== dateStr) {
 				// Task was moved to a different day — add exception for original date
@@ -116,8 +134,6 @@ function onDragChange() {
 
 	weekPersistence.debouncedSave()
 	if (definitionsChanged) {
-		columns.debouncedSaveCustomColumns()
-	} else {
 		columns.debouncedSaveCustomColumns()
 	}
 }

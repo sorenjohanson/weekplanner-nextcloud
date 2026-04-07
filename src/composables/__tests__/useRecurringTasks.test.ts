@@ -413,6 +413,72 @@ describe('useRecurringTasks', () => {
 			expect(weekData.value.days.friday[0].recurringOriginalDate).toBe('2026-03-20')
 		})
 
+		it('does not clean up instances intentionally moved to a different day', () => {
+			const def: RecurringTaskDefinition = {
+				id: 'def-moved-1',
+				title: 'Weekly Friday',
+				notes: '',
+				recurrence: 'weekly',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 4, // Friday
+				dayOfMonth: 1,
+				exceptionDates: ['2026-03-20'], // Friday excepted (task was moved)
+			}
+			const week = emptyWeek()
+			// Instance was moved from Friday to Wednesday by the user
+			week.days.wednesday.push({
+				id: 'inst-moved',
+				title: 'Weekly Friday',
+				done: false,
+				notes: '',
+				recurrence: 'weekly',
+				color: '',
+				recurringSourceId: 'def-moved-1',
+				recurringOriginalDate: '2026-03-20', // originally Friday
+			})
+			const { weekData, materializeRecurringTasks } = setup([def], week)
+			materializeRecurringTasks()
+
+			// The moved instance should be kept on Wednesday
+			expect(weekData.value.days.wednesday).toHaveLength(1)
+			expect(weekData.value.days.wednesday[0].id).toBe('inst-moved')
+			// Friday should remain empty (exception date)
+			expect(weekData.value.days.friday).toHaveLength(0)
+		})
+
+		it('still cleans up pattern-mismatched instances that were NOT moved', () => {
+			const def: RecurringTaskDefinition = {
+				id: 'def-pattern',
+				title: 'Changed pattern',
+				notes: '',
+				recurrence: 'weekly',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 4, // Friday (changed from Monday)
+				dayOfMonth: 1,
+				exceptionDates: [],
+			}
+			const week = emptyWeek()
+			// Instance on Monday without recurringOriginalDate (old pattern, not moved)
+			week.days.monday.push({
+				id: 'inst-stale',
+				title: 'Changed pattern',
+				done: false,
+				notes: '',
+				recurrence: 'weekly',
+				color: '',
+				recurringSourceId: 'def-pattern',
+			})
+			const { weekData, materializeRecurringTasks } = setup([def], week)
+			materializeRecurringTasks()
+
+			// Stale instance should be cleaned up
+			expect(weekData.value.days.monday).toHaveLength(0)
+			// New instance should appear on Friday
+			expect(weekData.value.days.friday).toHaveLength(1)
+		})
+
 		it('supports multiple exception dates', () => {
 			const def: RecurringTaskDefinition = {
 				id: 'def-exc-6',
