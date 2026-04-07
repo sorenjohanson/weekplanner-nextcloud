@@ -28,6 +28,7 @@ export function useRecurringTasks(
 				// (e.g. after changing from weekly to monthly)
 				if (def.recurrence === 'weekly' && i !== def.dayOfWeek) return false
 				if (def.recurrence === 'monthly' && dates[i].getDate() !== def.dayOfMonth) return false
+				if (def.exceptionDates?.includes(dateStr)) return false
 				return true
 			})
 			if (weekData.value.days[day].length !== before) changed = true
@@ -50,6 +51,7 @@ export function useRecurringTasks(
 					matches = date.getDate() === def.dayOfMonth
 				}
 				if (!matches) continue
+				if (def.exceptionDates?.includes(dateStr)) continue
 				const alreadyExists = weekData.value.days[day].some(
 					(t) => t.recurringSourceId === def.id,
 				)
@@ -62,6 +64,7 @@ export function useRecurringTasks(
 						recurrence: def.recurrence,
 						color: '',
 						recurringSourceId: def.id,
+						recurringOriginalDate: dateStr,
 					})
 					changed = true
 				}

@@ -19,6 +19,7 @@ export interface Task {
 	recurrence: Recurrence
 	color: TaskColor
 	recurringSourceId?: string
+	recurringOriginalDate?: string
 }
 
 export interface RecurringTaskDefinition {
@@ -30,6 +31,7 @@ export interface RecurringTaskDefinition {
 	endDate: string
 	dayOfWeek: number
 	dayOfMonth: number
+	exceptionDates: string[]
 }
 
 export type DayKey = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'

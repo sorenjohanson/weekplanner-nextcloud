@@ -32,6 +32,9 @@ export function normalizeWeekData(data: unknown): WeekData {
 						if (t.recurringSourceId) {
 							task.recurringSourceId = t.recurringSourceId
 						}
+						if (t.recurringOriginalDate) {
+							task.recurringOriginalDate = t.recurringOriginalDate
+						}
 						return task
 					})
 				}

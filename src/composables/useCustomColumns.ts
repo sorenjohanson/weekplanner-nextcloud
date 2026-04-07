@@ -40,7 +40,10 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 				newCustomTasks.value = newObj
 			}
 			if (Array.isArray(data.recurringTasks)) {
-				recurringTasks.value = data.recurringTasks
+				recurringTasks.value = data.recurringTasks.map((d) => ({
+					...d,
+					exceptionDates: d.exceptionDates ?? [],
+				}))
 			}
 		} catch {
 			// Keep defaults
@@ -127,7 +130,10 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 		}
 		newCustomTasks.value = newObj
 		if (Array.isArray(typed.recurringTasks)) {
-			recurringTasks.value = typed.recurringTasks
+			recurringTasks.value = typed.recurringTasks.map((d) => ({
+				...d,
+				exceptionDates: d.exceptionDates ?? [],
+			}))
 		}
 	}
 
