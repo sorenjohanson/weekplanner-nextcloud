@@ -1,5 +1,7 @@
 export type Recurrence = '' | 'daily' | 'weekly' | 'monthly'
 
+export type RecurringDeleteMode = 'this' | 'this-and-future' | 'all'
+
 export type TaskColor = '' | 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple'
 
 export const TASK_COLORS: { value: TaskColor; label: string; hex: string }[] = [

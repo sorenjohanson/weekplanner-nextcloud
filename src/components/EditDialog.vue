@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
-import type { Recurrence, TaskColor } from '../types'
+import type { Recurrence, TaskColor, RecurringDeleteMode } from '../types'
 import { TASK_COLORS } from '../types'
 
 defineProps<{
@@ -9,18 +9,29 @@ defineProps<{
 	notes: string
 	recurrence: Recurrence
 	color: TaskColor
+	isRecurring: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
 	'update:title': [value: string]
 	'update:notes': [value: string]
 	'update:recurrence': [value: Recurrence]
 	'update:color': [value: TaskColor]
 	save: []
-	delete: []
+	delete: [mode?: RecurringDeleteMode]
 }>()
 
 const titleInput = ref<HTMLInputElement | null>(null)
+const showRecurringDeleteOptions = ref(false)
+
+function handleDelete() {
+	showRecurringDeleteOptions.value = true
+}
+
+function deleteWithMode(mode: RecurringDeleteMode) {
+	showRecurringDeleteOptions.value = false
+	emit('delete', mode)
+}
 
 onMounted(() => {
 	const isMobile = window.matchMedia('(max-width: 768px)').matches
@@ -107,12 +118,35 @@ onMounted(() => {
 				</div>
 			</div>
 			<div class="edit-dialog-footer">
-				<button class="edit-delete-btn" @click="$emit('delete')">
+				<button class="edit-delete-btn" @click="isRecurring ? handleDelete() : $emit('delete')">
 					Delete
 				</button>
 				<NcButton type="primary" @click="$emit('save')">
 					Save
 				</NcButton>
+			</div>
+		</div>
+		<div v-if="showRecurringDeleteOptions" class="recurring-delete-overlay" @click.self="showRecurringDeleteOptions = false">
+			<div class="recurring-delete-dialog" @keydown.escape="showRecurringDeleteOptions = false">
+				<div class="recurring-delete-header">
+					<h3>Delete recurring task</h3>
+				</div>
+				<div class="recurring-delete-options">
+					<button class="recurring-delete-option" @click="deleteWithMode('this')">
+						This occurrence
+					</button>
+					<button class="recurring-delete-option" @click="deleteWithMode('this-and-future')">
+						This and following occurrences
+					</button>
+					<button class="recurring-delete-option" @click="deleteWithMode('all')">
+						All occurrences
+					</button>
+				</div>
+				<div class="recurring-delete-footer">
+					<button class="recurring-delete-cancel" @click="showRecurringDeleteOptions = false">
+						Cancel
+					</button>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -316,6 +350,82 @@ onMounted(() => {
 
 .edit-delete-btn:hover {
 	background-color: rgba(200, 0, 0, 0.1);
+}
+
+.recurring-delete-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 10000;
+}
+
+.recurring-delete-dialog {
+	background-color: var(--color-main-background);
+	border-radius: 12px;
+	width: 320px;
+	max-width: 90vw;
+	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+	overflow: hidden;
+}
+
+.recurring-delete-header {
+	padding: 16px 20px 8px;
+}
+
+.recurring-delete-header h3 {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 600;
+	color: var(--color-main-text);
+}
+
+.recurring-delete-options {
+	display: flex;
+	flex-direction: column;
+}
+
+.recurring-delete-option {
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 10px 20px;
+	font-size: 14px;
+	color: var(--color-main-text);
+	text-align: left;
+	font-family: inherit;
+}
+
+.recurring-delete-option:hover {
+	background-color: var(--color-background-hover);
+}
+
+.recurring-delete-footer {
+	padding: 12px 20px;
+	border-top: 1px solid var(--color-border);
+	display: flex;
+	justify-content: flex-end;
+}
+
+.recurring-delete-cancel {
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: var(--color-text-maxcontrast);
+	font-size: 14px;
+	padding: 8px 16px;
+	border-radius: 6px;
+	font-family: inherit;
+}
+
+.recurring-delete-cancel:hover {
+	background-color: var(--color-background-hover);
+	color: var(--color-main-text);
 }
 
 @media (max-width: 768px) {
