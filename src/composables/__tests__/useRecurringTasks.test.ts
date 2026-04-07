@@ -36,6 +36,7 @@ describe('useRecurringTasks', () => {
 				endDate: '',
 				dayOfWeek: 0,
 				dayOfMonth: 1,
+				exceptionDates: [],
 			}
 			const { weekData, debouncedSave, materializeRecurringTasks } = setup([def])
 			materializeRecurringTasks()
@@ -58,6 +59,7 @@ describe('useRecurringTasks', () => {
 				endDate: '',
 				dayOfWeek: 0,
 				dayOfMonth: 1,
+				exceptionDates: [],
 			}
 			const { weekData, materializeRecurringTasks } = setup([def])
 			materializeRecurringTasks()
@@ -80,6 +82,7 @@ describe('useRecurringTasks', () => {
 				endDate: '',
 				dayOfWeek: 4, // friday
 				dayOfMonth: 1,
+				exceptionDates: [],
 			}
 			const { weekData, materializeRecurringTasks } = setup([def])
 			materializeRecurringTasks()
@@ -106,6 +109,7 @@ describe('useRecurringTasks', () => {
 				endDate: '',
 				dayOfWeek: 0,
 				dayOfMonth: 18,
+				exceptionDates: [],
 			}
 			const { weekData, materializeRecurringTasks } = setup([def])
 			materializeRecurringTasks()
@@ -127,6 +131,7 @@ describe('useRecurringTasks', () => {
 				endDate: '',
 				dayOfWeek: 0,
 				dayOfMonth: 5, // not in Mar 16-22
+				exceptionDates: [],
 			}
 			const { weekData, debouncedSave, materializeRecurringTasks } = setup([def])
 			materializeRecurringTasks()
@@ -149,6 +154,7 @@ describe('useRecurringTasks', () => {
 				endDate: '',
 				dayOfWeek: 0,
 				dayOfMonth: 1,
+				exceptionDates: [],
 			}
 			const { weekData, debouncedSave, materializeRecurringTasks } = setup([def])
 			materializeRecurringTasks()
@@ -169,6 +175,7 @@ describe('useRecurringTasks', () => {
 				endDate: '2026-03-15', // before this week
 				dayOfWeek: 0,
 				dayOfMonth: 1,
+				exceptionDates: [],
 			}
 			const { weekData, debouncedSave, materializeRecurringTasks } = setup([def])
 			materializeRecurringTasks()
@@ -190,6 +197,7 @@ describe('useRecurringTasks', () => {
 				endDate: '',
 				dayOfWeek: 0,
 				dayOfMonth: 1,
+				exceptionDates: [],
 			}
 			const { weekData, materializeRecurringTasks } = setup([def])
 			materializeRecurringTasks()
@@ -213,6 +221,7 @@ describe('useRecurringTasks', () => {
 				done: false,
 				notes: '',
 				recurrence: 'daily',
+				color: '',
 				recurringSourceId: 'deleted-def',
 			})
 			const { weekData, debouncedSave, materializeRecurringTasks } = setup([], week)
@@ -232,6 +241,7 @@ describe('useRecurringTasks', () => {
 				endDate: '2026-03-17', // only covers Monday & Tuesday
 				dayOfWeek: 0,
 				dayOfMonth: 1,
+				exceptionDates: [],
 			}
 			const week = emptyWeek()
 			// Manually place instances on all days
@@ -242,6 +252,7 @@ describe('useRecurringTasks', () => {
 					done: false,
 					notes: '',
 					recurrence: 'daily',
+					color: '',
 					recurringSourceId: 'def-8',
 				})
 			}
@@ -265,6 +276,7 @@ describe('useRecurringTasks', () => {
 				endDate: '',
 				dayOfWeek: 4, // Friday
 				dayOfMonth: 1,
+				exceptionDates: [],
 			}
 			const week = emptyWeek()
 			// Instance was on Monday (old pattern)
@@ -274,6 +286,7 @@ describe('useRecurringTasks', () => {
 				done: false,
 				notes: '',
 				recurrence: 'weekly',
+				color: '',
 				recurringSourceId: 'def-9',
 			})
 			const { weekData, materializeRecurringTasks } = setup([def], week)
@@ -281,6 +294,213 @@ describe('useRecurringTasks', () => {
 
 			expect(weekData.value.days.monday).toHaveLength(0) // cleaned up
 			expect(weekData.value.days.friday).toHaveLength(1) // newly materialized
+		})
+
+		it('removes instances on exception dates', () => {
+			const def: RecurringTaskDefinition = {
+				id: 'def-exc-1',
+				title: 'Daily with exception',
+				notes: '',
+				recurrence: 'daily',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 0,
+				dayOfMonth: 1,
+				exceptionDates: ['2026-03-18'], // Wednesday
+			}
+			const week = emptyWeek()
+			// Pre-populate an instance on the excepted day
+			week.days.wednesday.push({
+				id: 'inst-exc',
+				title: 'Daily with exception',
+				done: false,
+				notes: '',
+				recurrence: 'daily',
+				color: '',
+				recurringSourceId: 'def-exc-1',
+			})
+			const { weekData, materializeRecurringTasks } = setup([def], week)
+			materializeRecurringTasks()
+
+			expect(weekData.value.days.wednesday).toHaveLength(0) // cleaned up
+			expect(weekData.value.days.monday).toHaveLength(1) // still materialized
+			expect(weekData.value.days.friday).toHaveLength(1) // still materialized
+		})
+	})
+
+	describe('exception dates', () => {
+		it('skips materialization on exception dates for daily recurrence', () => {
+			const def: RecurringTaskDefinition = {
+				id: 'def-exc-2',
+				title: 'Daily except Wed',
+				notes: '',
+				recurrence: 'daily',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 0,
+				dayOfMonth: 1,
+				exceptionDates: ['2026-03-18'], // Wednesday
+			}
+			const { weekData, materializeRecurringTasks } = setup([def])
+			materializeRecurringTasks()
+
+			expect(weekData.value.days.monday).toHaveLength(1)
+			expect(weekData.value.days.tuesday).toHaveLength(1)
+			expect(weekData.value.days.wednesday).toHaveLength(0) // skipped
+			expect(weekData.value.days.thursday).toHaveLength(1)
+			expect(weekData.value.days.friday).toHaveLength(1)
+			expect(weekData.value.days.saturday).toHaveLength(1)
+			expect(weekData.value.days.sunday).toHaveLength(1)
+		})
+
+		it('skips materialization on exception dates for weekly recurrence', () => {
+			const def: RecurringTaskDefinition = {
+				id: 'def-exc-3',
+				title: 'Weekly except this Friday',
+				notes: '',
+				recurrence: 'weekly',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 4, // Friday
+				dayOfMonth: 1,
+				exceptionDates: ['2026-03-20'], // this Friday
+			}
+			const { weekData, debouncedSave, materializeRecurringTasks } = setup([def])
+			materializeRecurringTasks()
+
+			expect(weekData.value.days.friday).toHaveLength(0)
+			expect(debouncedSave).not.toHaveBeenCalled()
+		})
+
+		it('handles missing exceptionDates gracefully (backward compat)', () => {
+			// Simulate a definition from before exceptionDates was added
+			const def = {
+				id: 'def-exc-4',
+				title: 'Old definition',
+				notes: '',
+				recurrence: 'daily' as const,
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 0,
+				dayOfMonth: 1,
+			} as RecurringTaskDefinition
+			// @ts-expect-error - testing backward compat with missing field
+			delete def.exceptionDates
+			const { weekData, materializeRecurringTasks } = setup([def])
+			materializeRecurringTasks()
+
+			// Should still work without crashing
+			expect(weekData.value.days.monday).toHaveLength(1)
+			expect(weekData.value.days.friday).toHaveLength(1)
+		})
+
+		it('sets recurringOriginalDate on materialized instances', () => {
+			const def: RecurringTaskDefinition = {
+				id: 'def-exc-5',
+				title: 'Weekly Friday',
+				notes: '',
+				recurrence: 'weekly',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 4, // Friday
+				dayOfMonth: 1,
+				exceptionDates: [],
+			}
+			const { weekData, materializeRecurringTasks } = setup([def])
+			materializeRecurringTasks()
+
+			expect(weekData.value.days.friday).toHaveLength(1)
+			expect(weekData.value.days.friday[0].recurringOriginalDate).toBe('2026-03-20')
+		})
+
+		it('does not clean up instances intentionally moved to a different day', () => {
+			const def: RecurringTaskDefinition = {
+				id: 'def-moved-1',
+				title: 'Weekly Friday',
+				notes: '',
+				recurrence: 'weekly',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 4, // Friday
+				dayOfMonth: 1,
+				exceptionDates: ['2026-03-20'], // Friday excepted (task was moved)
+			}
+			const week = emptyWeek()
+			// Instance was moved from Friday to Wednesday by the user
+			week.days.wednesday.push({
+				id: 'inst-moved',
+				title: 'Weekly Friday',
+				done: false,
+				notes: '',
+				recurrence: 'weekly',
+				color: '',
+				recurringSourceId: 'def-moved-1',
+				recurringOriginalDate: '2026-03-20', // originally Friday
+			})
+			const { weekData, materializeRecurringTasks } = setup([def], week)
+			materializeRecurringTasks()
+
+			// The moved instance should be kept on Wednesday
+			expect(weekData.value.days.wednesday).toHaveLength(1)
+			expect(weekData.value.days.wednesday[0].id).toBe('inst-moved')
+			// Friday should remain empty (exception date)
+			expect(weekData.value.days.friday).toHaveLength(0)
+		})
+
+		it('still cleans up pattern-mismatched instances that were NOT moved', () => {
+			const def: RecurringTaskDefinition = {
+				id: 'def-pattern',
+				title: 'Changed pattern',
+				notes: '',
+				recurrence: 'weekly',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 4, // Friday (changed from Monday)
+				dayOfMonth: 1,
+				exceptionDates: [],
+			}
+			const week = emptyWeek()
+			// Instance on Monday without recurringOriginalDate (old pattern, not moved)
+			week.days.monday.push({
+				id: 'inst-stale',
+				title: 'Changed pattern',
+				done: false,
+				notes: '',
+				recurrence: 'weekly',
+				color: '',
+				recurringSourceId: 'def-pattern',
+			})
+			const { weekData, materializeRecurringTasks } = setup([def], week)
+			materializeRecurringTasks()
+
+			// Stale instance should be cleaned up
+			expect(weekData.value.days.monday).toHaveLength(0)
+			// New instance should appear on Friday
+			expect(weekData.value.days.friday).toHaveLength(1)
+		})
+
+		it('supports multiple exception dates', () => {
+			const def: RecurringTaskDefinition = {
+				id: 'def-exc-6',
+				title: 'Daily with multiple exceptions',
+				notes: '',
+				recurrence: 'daily',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 0,
+				dayOfMonth: 1,
+				exceptionDates: ['2026-03-16', '2026-03-18', '2026-03-20'], // Mon, Wed, Fri
+			}
+			const { weekData, materializeRecurringTasks } = setup([def])
+			materializeRecurringTasks()
+
+			expect(weekData.value.days.monday).toHaveLength(0)
+			expect(weekData.value.days.tuesday).toHaveLength(1)
+			expect(weekData.value.days.wednesday).toHaveLength(0)
+			expect(weekData.value.days.thursday).toHaveLength(1)
+			expect(weekData.value.days.friday).toHaveLength(0)
+			expect(weekData.value.days.saturday).toHaveLength(1)
+			expect(weekData.value.days.sunday).toHaveLength(1)
 		})
 	})
 })

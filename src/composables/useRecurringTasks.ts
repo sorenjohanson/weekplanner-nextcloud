@@ -24,10 +24,13 @@ export function useRecurringTasks(
 				const def = recurringTasks.value.find((d) => d.id === t.recurringSourceId)
 				if (!def) return false
 				if (def.endDate && dateStr > def.endDate) return false
+				// If this instance was intentionally moved here by the user, keep it
+				const wasMovedHere = t.recurringOriginalDate && t.recurringOriginalDate !== dateStr
 				// Remove instances that no longer match the current recurrence pattern
-				// (e.g. after changing from weekly to monthly)
-				if (def.recurrence === 'weekly' && i !== def.dayOfWeek) return false
-				if (def.recurrence === 'monthly' && dates[i].getDate() !== def.dayOfMonth) return false
+				// (e.g. after changing from weekly to monthly) — but not moved instances
+				if (!wasMovedHere && def.recurrence === 'weekly' && i !== def.dayOfWeek) return false
+				if (!wasMovedHere && def.recurrence === 'monthly' && dates[i].getDate() !== def.dayOfMonth) return false
+				if (!wasMovedHere && def.exceptionDates?.includes(dateStr)) return false
 				return true
 			})
 			if (weekData.value.days[day].length !== before) changed = true
@@ -50,6 +53,7 @@ export function useRecurringTasks(
 					matches = date.getDate() === def.dayOfMonth
 				}
 				if (!matches) continue
+				if (def.exceptionDates?.includes(dateStr)) continue
 				const alreadyExists = weekData.value.days[day].some(
 					(t) => t.recurringSourceId === def.id,
 				)
@@ -62,6 +66,7 @@ export function useRecurringTasks(
 						recurrence: def.recurrence,
 						color: '',
 						recurringSourceId: def.id,
+						recurringOriginalDate: dateStr,
 					})
 					changed = true
 				}

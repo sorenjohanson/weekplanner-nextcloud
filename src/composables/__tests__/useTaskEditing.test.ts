@@ -214,6 +214,7 @@ describe('useTaskEditing', () => {
 				endDate: '',
 				dayOfWeek: 2,
 				dayOfMonth: 18,
+				exceptionDates: [],
 			}]
 			const { openEdit, saveEdit, editRecurrence, recurringTasks, weekData } = setup({
 				weekOverride: week, recurringDefs: defs,
@@ -251,6 +252,7 @@ describe('useTaskEditing', () => {
 				endDate: '',
 				dayOfWeek: 2,
 				dayOfMonth: 18,
+				exceptionDates: [],
 			}]
 			const { openEdit, saveEdit, editRecurrence, recurringTasks, materializeRecurringTasks } = setup({
 				weekOverride: week, recurringDefs: defs,
@@ -287,6 +289,7 @@ describe('useTaskEditing', () => {
 				endDate: '',
 				dayOfWeek: 4,
 				dayOfMonth: 20,
+				exceptionDates: [],
 			}]
 			const { openEdit, saveEdit, editTitle, editNotes, recurringTasks, debouncedSaveCustomColumns } = setup({
 				weekOverride: week, recurringDefs: defs,
@@ -388,6 +391,7 @@ describe('useTaskEditing', () => {
 				endDate: '',
 				dayOfWeek: 0,
 				dayOfMonth: 1,
+				exceptionDates: [],
 			}]
 			const {
 				openEdit, deleteEditingTask, weekData, recurringTasks,

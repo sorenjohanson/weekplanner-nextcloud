@@ -76,6 +76,7 @@ export function useTaskEditing(
 				endDate: '',
 				dayOfWeek: ALL_KEYS.indexOf(day),
 				dayOfMonth: date.getDate(),
+				exceptionDates: [],
 			})
 			task.recurringSourceId = defId
 			task.recurrence = newRecurrence
