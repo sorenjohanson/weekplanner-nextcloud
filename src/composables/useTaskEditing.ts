@@ -1,6 +1,6 @@
 import { ref, nextTick } from 'vue'
 import type { Ref, ComputedRef } from 'vue'
-import type { Recurrence, TaskColor, Task, RecurringTaskDefinition, DayKey, WeekData, CustomColumn } from '../types'
+import type { Recurrence, TaskColor, Task, RecurringTaskDefinition, DayKey, WeekData, CustomColumn, RecurringDeleteMode } from '../types'
 import { ALL_KEYS } from '../types'
 import { getWeekDates, toDateStr } from '../utils/dateUtils'
 
@@ -156,35 +156,64 @@ export function useTaskEditing(
 		editingTask.value = null
 	}
 
-	function deleteEditingTask() {
+	function deleteEditingTask(mode?: RecurringDeleteMode) {
 		if (!editingTask.value) return
 		const { day, taskId } = editingTask.value
 		if (isCustomColumn(day)) {
 			deleteCustomTask(day, taskId)
 		} else {
 			const task = weekData.value.days[day as DayKey].find((t) => t.id === taskId)
-			if (task?.recurringSourceId) {
+			if (task?.recurringSourceId && mode) {
 				const sourceId = task.recurringSourceId
 				const dateStr = getTaskDate(day as DayKey)
 				const def = recurringTasks.value.find((d) => d.id === sourceId)
-				if (def) {
-					const prev = new Date(dateStr + 'T00:00:00')
-					prev.setDate(prev.getDate() - 1)
-					def.endDate = toDateStr(prev)
-				}
-				const dates = getWeekDates(currentYear.value, currentWeek.value)
-				for (let i = 0; i < ALL_KEYS.length; i++) {
-					const dStr = toDateStr(dates[i])
-					if (dStr >= dateStr) {
-						weekData.value.days[ALL_KEYS[i]] = weekData.value.days[ALL_KEYS[i]].filter(
+
+				if (mode === 'this') {
+					// Delete only this occurrence: add to exception dates
+					if (def) {
+						const exceptionDate = task.recurringOriginalDate || dateStr
+						if (!def.exceptionDates.includes(exceptionDate)) {
+							def.exceptionDates.push(exceptionDate)
+						}
+					}
+					weekData.value.days[day as DayKey] = weekData.value.days[day as DayKey].filter((t) => t.id !== taskId)
+					flushSaveTimeout()
+					flushCustomSaveTimeout()
+					saveCustomColumnsNow()
+					saveWeekNow()
+				} else if (mode === 'this-and-future') {
+					// Delete this and all future occurrences: set endDate to day before
+					if (def) {
+						const prev = new Date(dateStr + 'T00:00:00')
+						prev.setDate(prev.getDate() - 1)
+						def.endDate = toDateStr(prev)
+					}
+					const dates = getWeekDates(currentYear.value, currentWeek.value)
+					for (let i = 0; i < ALL_KEYS.length; i++) {
+						const dStr = toDateStr(dates[i])
+						if (dStr >= dateStr) {
+							weekData.value.days[ALL_KEYS[i]] = weekData.value.days[ALL_KEYS[i]].filter(
+								(t) => t.recurringSourceId !== sourceId,
+							)
+						}
+					}
+					flushSaveTimeout()
+					flushCustomSaveTimeout()
+					saveCustomColumnsNow()
+					saveWeekNow()
+				} else if (mode === 'all') {
+					// Delete all occurrences: remove definition and all instances
+					recurringTasks.value = recurringTasks.value.filter((d) => d.id !== sourceId)
+					for (const key of ALL_KEYS) {
+						weekData.value.days[key] = weekData.value.days[key].filter(
 							(t) => t.recurringSourceId !== sourceId,
 						)
 					}
+					flushSaveTimeout()
+					flushCustomSaveTimeout()
+					saveCustomColumnsNow()
+					saveWeekNow()
 				}
-				flushSaveTimeout()
-				flushCustomSaveTimeout()
-				saveCustomColumnsNow()
-				saveWeekNow()
 			} else {
 				weekData.value.days[day as DayKey] = weekData.value.days[day as DayKey].filter((t) => t.id !== taskId)
 				debouncedSave()

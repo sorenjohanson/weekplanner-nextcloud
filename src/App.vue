@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import NcAppContent from '@nextcloud/vue/components/NcAppContent'
 import NcContent from '@nextcloud/vue/components/NcContent'
 import NcButton from '@nextcloud/vue/components/NcButton'
-import type { RecurringTaskDefinition, WeekData } from './types'
+import type { RecurringTaskDefinition, WeekData, DayKey } from './types'
 import { WEEKDAY_KEYS, WEEKEND_KEYS, DAY_LABELS, ALL_KEYS } from './types'
 import { getWeekDates, toDateStr } from './utils/dateUtils'
 import TaskList from './components/TaskList.vue'
@@ -50,6 +50,18 @@ const {
 	columns.flushCustomSaveTimeout, columns.deleteCustomTask,
 	recurring.materializeRecurringTasks,
 )
+
+const editingTaskIsRecurring = computed(() => {
+	if (!editingTask.value) return false
+	const { day, taskId } = editingTask.value
+	if (day.startsWith('custom_')) {
+		const col = customColumns.value.find((c) => c.id === day)
+		const task = col?.tasks.find((t) => t.id === taskId)
+		return !!task?.recurringSourceId
+	}
+	const task = weekData.value.days[day as DayKey]?.find((t) => t.id === taskId)
+	return !!task?.recurringSourceId
+})
 
 const polling = usePolling({
 	currentYear,
@@ -265,12 +277,13 @@ onUnmounted(() => {
 					:notes="editNotes"
 					:recurrence="editRecurrence"
 					:color="editColor"
+					:is-recurring="editingTaskIsRecurring"
 					@update:title="editTitle = $event"
 					@update:notes="editNotes = $event"
 					@update:recurrence="editRecurrence = $event"
 					@update:color="editColor = $event"
 					@save="saveEdit"
-					@delete="deleteEditingTask" />
+					@delete="deleteEditingTask($event)" />
 			</div>
 		</NcAppContent>
 	</NcContent>
