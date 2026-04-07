@@ -375,8 +375,7 @@ onMounted(() => {
 }
 
 .recurring-delete-header {
-	padding: 16px 20px;
-	border-bottom: 1px solid var(--color-border);
+	padding: 16px 20px 8px;
 }
 
 .recurring-delete-header h3 {
@@ -394,9 +393,8 @@ onMounted(() => {
 .recurring-delete-option {
 	background: none;
 	border: none;
-	border-bottom: 1px solid var(--color-border);
 	cursor: pointer;
-	padding: 14px 20px;
+	padding: 10px 20px;
 	font-size: 14px;
 	color: var(--color-main-text);
 	text-align: left;
@@ -405,10 +403,6 @@ onMounted(() => {
 
 .recurring-delete-option:hover {
 	background-color: var(--color-background-hover);
-}
-
-.recurring-delete-option:last-child {
-	border-bottom: none;
 }
 
 .recurring-delete-footer {
