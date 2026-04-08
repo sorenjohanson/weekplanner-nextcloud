@@ -28,12 +28,22 @@ function setup(options: {
 	const deleteCustomTask = vi.fn()
 	const materializeRecurringTasks = vi.fn()
 
-	const editing = useTaskEditing(
-		currentYear, currentWeek, weekData, weekDates, recurringTasks,
-		customColumns, debouncedSave, debouncedSaveCustomColumns,
-		saveWeekNow, saveCustomColumnsNow, flushSaveTimeout,
-		flushCustomSaveTimeout, deleteCustomTask, materializeRecurringTasks,
-	)
+	const editing = useTaskEditing({
+		currentYear,
+		currentWeek,
+		weekData,
+		weekDates,
+		recurringTasks,
+		customColumns,
+		debouncedSave,
+		debouncedSaveCustomColumns,
+		saveWeekNow,
+		saveCustomColumnsNow,
+		flushSaveTimeout,
+		flushCustomSaveTimeout,
+		deleteCustomTask,
+		materializeRecurringTasks,
+	})
 
 	return {
 		...editing,
@@ -341,7 +351,7 @@ describe('useTaskEditing', () => {
 			expect(debouncedSave).toHaveBeenCalled()
 		})
 
-		it('deletes a recurring task and sets endDate on definition', () => {
+		it('deletes a recurring task with this-and-future mode and sets endDate on definition', () => {
 			const defId = 'def-1'
 			const week = emptyWeek()
 			const task: Task = {
@@ -399,7 +409,7 @@ describe('useTaskEditing', () => {
 			} = setup({ weekOverride: week, recurringDefs: defs })
 
 			openEdit('wednesday', task)
-			deleteEditingTask()
+			deleteEditingTask('this-and-future')
 
 			// endDate set to day before wednesday (tuesday = 2026-03-17)
 			expect(recurringTasks.value[0].endDate).toBe('2026-03-17')

@@ -1,25 +1,32 @@
-import { ref, nextTick } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import type { Ref, ComputedRef } from 'vue'
 import type { Recurrence, TaskColor, Task, RecurringTaskDefinition, DayKey, WeekData, CustomColumn, RecurringDeleteMode } from '../types'
 import { ALL_KEYS } from '../types'
 import { getWeekDates, toDateStr } from '../utils/dateUtils'
 
-export function useTaskEditing(
-	currentYear: Ref<number>,
-	currentWeek: Ref<number>,
-	weekData: Ref<WeekData>,
-	weekDates: ComputedRef<Date[]>,
-	recurringTasks: Ref<RecurringTaskDefinition[]>,
-	customColumns: Ref<CustomColumn[]>,
-	debouncedSave: () => void,
-	debouncedSaveCustomColumns: () => void,
-	saveWeekNow: () => Promise<void>,
-	saveCustomColumnsNow: () => Promise<void>,
-	flushSaveTimeout: () => void,
-	flushCustomSaveTimeout: () => void,
-	deleteCustomTask: (columnId: string, taskId: string) => void,
-	materializeRecurringTasks: () => void,
-) {
+export interface TaskEditingDeps {
+	currentYear: Ref<number>
+	currentWeek: Ref<number>
+	weekData: Ref<WeekData>
+	weekDates: ComputedRef<Date[]>
+	recurringTasks: Ref<RecurringTaskDefinition[]>
+	customColumns: Ref<CustomColumn[]>
+	debouncedSave: () => void
+	debouncedSaveCustomColumns: () => void
+	saveWeekNow: () => Promise<void>
+	saveCustomColumnsNow: () => Promise<void>
+	flushSaveTimeout: () => void
+	flushCustomSaveTimeout: () => void
+	deleteCustomTask: (columnId: string, taskId: string) => void
+	materializeRecurringTasks: () => void
+}
+
+export function useTaskEditing(deps: TaskEditingDeps) {
+	const {
+		currentYear, currentWeek, weekData, weekDates, recurringTasks, customColumns,
+		debouncedSave, debouncedSaveCustomColumns, saveWeekNow, saveCustomColumnsNow,
+		flushSaveTimeout, flushCustomSaveTimeout, deleteCustomTask, materializeRecurringTasks,
+	} = deps
 	const editingTask = ref<{ day: DayKey | string; taskId: string } | null>(null)
 	const editTitle = ref('')
 	const editNotes = ref('')
@@ -245,8 +252,21 @@ export function useTaskEditing(
 		}
 	}
 
+	const editingTaskIsRecurring = computed(() => {
+		if (!editingTask.value) return false
+		const { day, taskId } = editingTask.value
+		if (isCustomColumn(day)) {
+			const col = customColumns.value.find((c) => c.id === day)
+			const task = col?.tasks.find((t) => t.id === taskId)
+			return !!task?.recurringSourceId
+		}
+		const task = weekData.value.days[day as DayKey]?.find((t) => t.id === taskId)
+		return !!task?.recurringSourceId
+	})
+
 	return {
 		editingTask,
+		editingTaskIsRecurring,
 		editTitle,
 		editNotes,
 		editRecurrence,

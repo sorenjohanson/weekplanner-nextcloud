@@ -3,6 +3,8 @@ import type { Ref } from 'vue'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 import type { Task, CustomColumn, RecurringTaskDefinition } from '../types'
+import { normalizeTask } from '../utils/weekData'
+import { createDebouncedSave } from '../utils/debounce'
 
 export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>) {
 	const customColumns = ref<CustomColumn[]>([
@@ -16,9 +18,24 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 		custom_3: '',
 	})
 
-	let customSaveTimeout: ReturnType<typeof setTimeout> | null = null
-	let customSaveInProgress = false
 	let knownCustomUpdatedAt = 0
+
+	async function saveCustomColumnsNow() {
+		save.setInProgress(true)
+		try {
+			const url = generateUrl('/apps/weekplanner/custom-columns')
+			const response = await axios.put(url, { columns: customColumns.value, recurringTasks: recurringTasks.value })
+			if (typeof response.data?.updatedAt === 'number') {
+				knownCustomUpdatedAt = response.data.updatedAt
+			}
+		} catch {
+			// Save failed silently
+		} finally {
+			save.setInProgress(false)
+		}
+	}
+
+	const save = createDebouncedSave(saveCustomColumnsNow)
 
 	async function loadCustomColumns() {
 		try {
@@ -31,7 +48,7 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 			if (data.columns && Array.isArray(data.columns)) {
 				customColumns.value = data.columns.map((col) => ({
 					...col,
-					tasks: (col.tasks || []).map((t) => ({ ...t, notes: t.notes || '', recurrence: t.recurrence || '' })),
+					tasks: (col.tasks || []).map(normalizeTask),
 				}))
 				const newObj: Record<string, string> = {}
 				for (const col of customColumns.value) {
@@ -50,29 +67,6 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 		}
 	}
 
-	async function saveCustomColumnsNow() {
-		customSaveInProgress = true
-		try {
-			const url = generateUrl('/apps/weekplanner/custom-columns')
-			const response = await axios.put(url, { columns: customColumns.value, recurringTasks: recurringTasks.value })
-			if (typeof response.data?.updatedAt === 'number') {
-				knownCustomUpdatedAt = response.data.updatedAt
-			}
-		} catch {
-			// Save failed silently
-		} finally {
-			customSaveInProgress = false
-		}
-	}
-
-	function debouncedSaveCustomColumns() {
-		if (customSaveTimeout) clearTimeout(customSaveTimeout)
-		customSaveTimeout = setTimeout(() => {
-			customSaveTimeout = null
-			saveCustomColumnsNow()
-		}, 300)
-	}
-
 	function addCustomTask(columnId: string) {
 		const title = newCustomTasks.value[columnId]?.trim()
 		if (!title) return
@@ -87,7 +81,7 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 			color: '',
 		})
 		newCustomTasks.value[columnId] = ''
-		debouncedSaveCustomColumns()
+		save.trigger()
 	}
 
 	function toggleCustomDone(columnId: string, taskId: string) {
@@ -96,7 +90,7 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 		const task = col.tasks.find((t: Task) => t.id === taskId)
 		if (task) {
 			task.done = !task.done
-			debouncedSaveCustomColumns()
+			save.trigger()
 		}
 	}
 
@@ -104,14 +98,14 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 		const col = customColumns.value.find((c) => c.id === columnId)
 		if (!col) return
 		col.tasks = col.tasks.filter((t: Task) => t.id !== taskId)
-		debouncedSaveCustomColumns()
+		save.trigger()
 	}
 
 	function updateColumnTitle(columnId: string, title: string) {
 		const col = customColumns.value.find((c) => c.id === columnId)
 		if (col) {
 			col.title = title
-			debouncedSaveCustomColumns()
+			save.trigger()
 		}
 	}
 
@@ -122,7 +116,7 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 		if (!Array.isArray(cols)) return
 		customColumns.value = cols.map((col) => ({
 			...col,
-			tasks: (col.tasks || []).map((t) => ({ ...t, notes: t.notes || '', recurrence: t.recurrence || '' })),
+			tasks: (col.tasks || []).map(normalizeTask),
 		}))
 		const newObj: Record<string, string> = {}
 		for (const col of customColumns.value) {
@@ -137,39 +131,20 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 		}
 	}
 
-	function flushCustomSaveTimeout() {
-		if (customSaveTimeout) {
-			clearTimeout(customSaveTimeout)
-			customSaveTimeout = null
-		}
-	}
-
-	function getKnownUpdatedAt() {
-		return knownCustomUpdatedAt
-	}
-
-	function setKnownUpdatedAt(val: number) {
-		knownCustomUpdatedAt = val
-	}
-
-	function isSaveIdle() {
-		return customSaveTimeout === null && !customSaveInProgress
-	}
-
 	return {
 		customColumns,
 		newCustomTasks,
 		loadCustomColumns,
 		saveCustomColumnsNow,
-		debouncedSaveCustomColumns,
+		debouncedSaveCustomColumns: save.trigger,
 		addCustomTask,
 		toggleCustomDone,
 		deleteCustomTask,
 		updateColumnTitle,
 		applyCustomColumnsData,
-		flushCustomSaveTimeout,
-		getKnownUpdatedAt,
-		setKnownUpdatedAt,
-		isSaveIdle,
+		flushCustomSaveTimeout: save.flush,
+		getKnownUpdatedAt: () => knownCustomUpdatedAt,
+		setKnownUpdatedAt: (val: number) => { knownCustomUpdatedAt = val },
+		isSaveIdle: save.isIdle,
 	}
 }

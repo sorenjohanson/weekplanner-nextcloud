@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import NcAppContent from '@nextcloud/vue/components/NcAppContent'
 import NcContent from '@nextcloud/vue/components/NcContent'
 import NcButton from '@nextcloud/vue/components/NcButton'
-import type { RecurringTaskDefinition, WeekData, DayKey } from './types'
-import { WEEKDAY_KEYS, WEEKEND_KEYS, DAY_LABELS, ALL_KEYS } from './types'
-import { getWeekDates, toDateStr } from './utils/dateUtils'
+import type { RecurringTaskDefinition, WeekData } from './types'
+import { WEEKDAY_KEYS, WEEKEND_KEYS, DAY_LABELS } from './types'
 import TaskList from './components/TaskList.vue'
 import EditDialog from './components/EditDialog.vue'
 import { emptyWeek } from './utils/weekData'
@@ -36,31 +35,27 @@ const { customColumns, newCustomTasks, addCustomTask, toggleCustomDone, updateCo
 
 const recurring = useRecurringTasks(
 	currentYear, currentWeek, weekData, recurringTasks,
-	weekPersistence.debouncedSave,
+	weekPersistence.debouncedSave, columns.customColumns,
 )
 
 const {
-	editingTask, editTitle, editNotes, editRecurrence, editColor,
+	editingTask, editingTaskIsRecurring, editTitle, editNotes, editRecurrence, editColor,
 	newTasks, openEdit, saveEdit, deleteEditingTask, addTask, toggleDone,
-} = useTaskEditing(
-	currentYear, currentWeek, weekData, weekDates, recurringTasks,
-	columns.customColumns, weekPersistence.debouncedSave,
-	columns.debouncedSaveCustomColumns, weekPersistence.saveWeekNow,
-	columns.saveCustomColumnsNow, weekPersistence.flushSaveTimeout,
-	columns.flushCustomSaveTimeout, columns.deleteCustomTask,
-	recurring.materializeRecurringTasks,
-)
-
-const editingTaskIsRecurring = computed(() => {
-	if (!editingTask.value) return false
-	const { day, taskId } = editingTask.value
-	if (day.startsWith('custom_')) {
-		const col = customColumns.value.find((c) => c.id === day)
-		const task = col?.tasks.find((t) => t.id === taskId)
-		return !!task?.recurringSourceId
-	}
-	const task = weekData.value.days[day as DayKey]?.find((t) => t.id === taskId)
-	return !!task?.recurringSourceId
+} = useTaskEditing({
+	currentYear,
+	currentWeek,
+	weekData,
+	weekDates,
+	recurringTasks,
+	customColumns: columns.customColumns,
+	debouncedSave: weekPersistence.debouncedSave,
+	debouncedSaveCustomColumns: columns.debouncedSaveCustomColumns,
+	saveWeekNow: weekPersistence.saveWeekNow,
+	saveCustomColumnsNow: columns.saveCustomColumnsNow,
+	flushSaveTimeout: weekPersistence.flushSaveTimeout,
+	flushCustomSaveTimeout: columns.flushCustomSaveTimeout,
+	deleteCustomTask: columns.deleteCustomTask,
+	materializeRecurringTasks: recurring.materializeRecurringTasks,
 })
 
 const polling = usePolling({
@@ -83,67 +78,7 @@ const polling = usePolling({
 
 // --- Drag handlers ---
 function onDragChange() {
-	const dates = getWeekDates(currentYear.value, currentWeek.value)
-	let definitionsChanged = false
-
-	// Check custom columns: recurring tasks moved here need an exception on their original date
-	for (const col of customColumns.value) {
-		for (const task of col.tasks) {
-			if (!task.recurringSourceId) continue
-			const def = recurringTasks.value.find((d) => d.id === task.recurringSourceId)
-			if (!def) continue
-			// Backfill recurringOriginalDate for pre-existing instances
-			if (!task.recurringOriginalDate) {
-				for (let i = 0; i < ALL_KEYS.length; i++) {
-					const ds = toDateStr(dates[i])
-					let matches = false
-					if (def.recurrence === 'daily') matches = true
-					else if (def.recurrence === 'weekly') matches = i === def.dayOfWeek
-					else if (def.recurrence === 'monthly') matches = dates[i].getDate() === def.dayOfMonth
-					if (matches && ds >= def.startDate && (!def.endDate || ds <= def.endDate)) {
-						task.recurringOriginalDate = ds
-						break
-					}
-				}
-			}
-			if (task.recurringOriginalDate && !def.exceptionDates.includes(task.recurringOriginalDate)) {
-				def.exceptionDates.push(task.recurringOriginalDate)
-				definitionsChanged = true
-			}
-		}
-	}
-
-	// Check day slots: recurring tasks moved to a different day need an exception on original date
-	for (let i = 0; i < ALL_KEYS.length; i++) {
-		const day = ALL_KEYS[i]
-		const dateStr = toDateStr(dates[i])
-		for (const task of weekData.value.days[day]) {
-			if (!task.recurringSourceId) continue
-			const def = recurringTasks.value.find((d) => d.id === task.recurringSourceId)
-			if (!def) continue
-			// Backfill recurringOriginalDate for pre-existing instances
-			if (!task.recurringOriginalDate) {
-				task.recurringOriginalDate = dateStr
-			}
-
-			if (task.recurringOriginalDate !== dateStr) {
-				// Task was moved to a different day — add exception for original date
-				if (!def.exceptionDates.includes(task.recurringOriginalDate)) {
-					def.exceptionDates.push(task.recurringOriginalDate)
-					definitionsChanged = true
-				}
-				task.recurringOriginalDate = dateStr
-			} else {
-				// Task is on its correct day — remove exception if one exists
-				const idx = def.exceptionDates.indexOf(dateStr)
-				if (idx !== -1) {
-					def.exceptionDates.splice(idx, 1)
-					definitionsChanged = true
-				}
-			}
-		}
-	}
-
+	const definitionsChanged = recurring.handleDragChange()
 	weekPersistence.debouncedSave()
 	if (definitionsChanged) {
 		columns.debouncedSaveCustomColumns()
