@@ -1,6 +1,22 @@
 import type { Task, WeekData } from '../types'
 import { ALL_KEYS } from '../types'
 
+export function normalizeTask(t: Partial<Task> & { id: string; title: string; done: boolean }): Task {
+	const task: Task = {
+		...t,
+		notes: t.notes || '',
+		recurrence: t.recurrence || '',
+		color: t.color || '',
+	}
+	if (t.recurringSourceId) {
+		task.recurringSourceId = t.recurringSourceId
+	}
+	if (t.recurringOriginalDate) {
+		task.recurringOriginalDate = t.recurringOriginalDate
+	}
+	return task
+}
+
 export function emptyWeek(): WeekData {
 	return {
 		days: {
@@ -22,21 +38,7 @@ export function normalizeWeekData(data: unknown): WeekData {
 		if (days && typeof days === 'object') {
 			for (const key of ALL_KEYS) {
 				if (Array.isArray(days[key])) {
-					result.days[key] = (days[key] as Task[]).map((t) => {
-						const task: Task = {
-							...t,
-							notes: t.notes || '',
-							recurrence: t.recurrence || '',
-							color: t.color || '',
-						}
-						if (t.recurringSourceId) {
-							task.recurringSourceId = t.recurringSourceId
-						}
-						if (t.recurringOriginalDate) {
-							task.recurringOriginalDate = t.recurringOriginalDate
-						}
-						return task
-					})
+					result.days[key] = (days[key] as Task[]).map(normalizeTask)
 				}
 			}
 		}

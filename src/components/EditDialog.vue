@@ -62,14 +62,14 @@ onMounted(() => {
 					id="edit-title"
 					ref="titleInput"
 					:value="title"
-					class="edit-title-input"
+					class="edit-field"
 					@input="$emit('update:title', ($event.target as HTMLInputElement).value)"
 					@keydown.enter="$emit('save')">
 				<label class="edit-label edit-label-notes" for="edit-notes">Notes</label>
 				<textarea
 					id="edit-notes"
 					:value="notes"
-					class="edit-notes-input"
+					class="edit-field edit-notes-input"
 					placeholder="Add notes…"
 					rows="3"
 					@input="$emit('update:notes', ($event.target as HTMLTextAreaElement).value)" />
@@ -77,7 +77,7 @@ onMounted(() => {
 				<select
 					id="edit-recurrence"
 					:value="recurrence"
-					class="edit-recurrence-select"
+					class="edit-field"
 					@change="$emit('update:recurrence', ($event.target as HTMLSelectElement).value as Recurrence)">
 					<option value="">
 						None
@@ -227,7 +227,7 @@ onMounted(() => {
 	margin-top: 16px;
 }
 
-.edit-title-input {
+.edit-field {
 	width: 100%;
 	padding: 8px 12px;
 	border: 2px solid var(--color-border-dark);
@@ -237,55 +237,21 @@ onMounted(() => {
 	background-color: var(--color-main-background);
 	outline: none;
 	box-sizing: border-box;
+	font-family: inherit;
 }
 
-.edit-title-input:hover,
-.edit-title-input:focus {
+.edit-field:hover,
+.edit-field:focus {
 	border-color: var(--color-primary-element) !important;
 	box-shadow: none !important;
 }
 
 .edit-notes-input {
-	width: 100%;
-	padding: 8px 12px;
-	border: 2px solid var(--color-border-dark);
-	border-radius: 6px;
-	font-size: 14px;
-	color: var(--color-main-text);
-	background-color: var(--color-main-background);
-	outline: none;
 	resize: vertical;
-	font-family: inherit;
-	box-sizing: border-box;
-}
-
-.edit-notes-input:hover,
-.edit-notes-input:focus {
-	border-color: var(--color-primary-element) !important;
-	box-shadow: none !important;
 }
 
 .edit-notes-input::placeholder {
 	color: var(--color-text-maxcontrast);
-}
-
-.edit-recurrence-select {
-	width: 100%;
-	padding: 8px 12px;
-	border: 2px solid var(--color-border-dark);
-	border-radius: 6px;
-	font-size: 14px;
-	color: var(--color-main-text);
-	background-color: var(--color-main-background);
-	outline: none;
-	box-sizing: border-box;
-	font-family: inherit;
-}
-
-.edit-recurrence-select:hover,
-.edit-recurrence-select:focus {
-	border-color: var(--color-primary-element) !important;
-	box-shadow: none !important;
 }
 
 .edit-label-color {
@@ -342,14 +308,14 @@ onMounted(() => {
 	background: none;
 	border: none;
 	cursor: pointer;
-	color: #c00;
+	color: var(--color-error);
 	font-size: 14px;
 	padding: 8px 16px;
 	border-radius: 6px;
 }
 
 .edit-delete-btn:hover {
-	background-color: rgba(200, 0, 0, 0.1);
+	background-color: color-mix(in srgb, var(--color-error) 10%, transparent);
 }
 
 .recurring-delete-overlay {
