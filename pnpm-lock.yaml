@@ -12,8 +12,8 @@ importers:
         specifier: ^2.5.2
         version: 2.5.2
       '@nextcloud/notify_push':
-        specifier: ^1.3.1
-        version: 1.3.1
+        specifier: ^1.4.0
+        version: 1.4.0
       '@nextcloud/router':
         specifier: ^3.1.0
         version: 3.1.0
@@ -35,7 +35,7 @@ importers:
         version: 8.4.2(@babel/core@7.29.0)(@babel/eslint-parser@7.28.6(@babel/core@7.29.0)(eslint@8.57.1))(@nextcloud/eslint-plugin@2.2.1(eslint@8.57.1))(@vue/eslint-config-typescript@13.0.0(eslint-plugin-vue@9.33.0(eslint@8.57.1))(eslint@8.57.1)(typescript@5.9.3))(eslint-config-standard@17.1.0(eslint-plugin-import@2.32.0)(eslint-plugin-n@16.6.2(eslint@8.57.1))(eslint-plugin-promise@6.6.0(eslint@8.57.1))(eslint@8.57.1))(eslint-import-resolver-exports@1.0.0-beta.5(eslint-plugin-import@2.32.0)(eslint@8.57.1))(eslint-import-resolver-typescript@3.10.1)(eslint-plugin-import@2.32.0)(eslint-plugin-jsdoc@46.10.1(eslint@8.57.1))(eslint-plugin-n@16.6.2(eslint@8.57.1))(eslint-plugin-promise@6.6.0(eslint@8.57.1))(eslint-plugin-vue@9.33.0(eslint@8.57.1))(eslint@8.57.1)(typescript@5.9.3)
       '@nextcloud/stylelint-config':
         specifier: ^3.1.1
-        version: 3.2.1(stylelint-config-recommended-scss@17.0.0(postcss@8.5.13)(stylelint@17.3.0(typescript@5.9.3)))(stylelint-config-recommended-vue@1.6.1(postcss-html@1.8.1)(stylelint@17.3.0(typescript@5.9.3)))(stylelint@17.3.0(typescript@5.9.3))
+        version: 3.2.1(stylelint-config-recommended-scss@17.0.0(postcss@8.5.14)(stylelint@17.3.0(typescript@5.9.3)))(stylelint-config-recommended-vue@1.6.1(postcss-html@1.8.1)(stylelint@17.3.0(typescript@5.9.3)))(stylelint@17.3.0(typescript@5.9.3))
       '@nextcloud/vite-config':
         specifier: ^2.5.2
         version: 2.5.2(@types/node@25.6.0)(browserslist@4.28.1)(picomatch@4.0.4)(rollup@4.59.0)(sass@1.97.3)(typescript@5.9.3)(vite@7.3.1(@types/node@25.6.0)(sass@1.97.3)(yaml@2.8.3))(vue@3.5.32(typescript@5.9.3))
@@ -701,8 +701,8 @@ packages:
     resolution: {integrity: sha512-TcbVRL4/O5ffI1RXFmQAFD3gwwT15AAdr1770x+RNqVvfBdoGVyhzOwCIyA5Vfc3fA1iJXFa+rE6buJZSoqlcw==}
     engines: {node: ^20.0.0 || ^22.0.0 || ^24.0.0}
 
-  '@nextcloud/notify_push@1.3.1':
-    resolution: {integrity: sha512-EfjlSidNB/ZelxK1VyPvIeMYRmh/e7M7mdmRgAtg93XK0tqOBakKXeIF1ZI13IlF4xojHN0ktA6DYitSQb8kSQ==}
+  '@nextcloud/notify_push@1.4.0':
+    resolution: {integrity: sha512-07UDgz1xLG9XABP8+mwQ2CsNWZu6lKzz0ErUA2HfE1ZfxXKiwVpo60t30y34UExGB9+Ok1nFaYU8fyJHncz9aQ==}
 
   '@nextcloud/paths@3.1.0':
     resolution: {integrity: sha512-vtFYA/kthaUDzu6KejTOL1OwnOy7/yynq5zdB/UBpYacAWjUX5Ddh4OMWx3rEavkBJ9/QGhrFryNJLjNfe8OQA==}
@@ -1059,8 +1059,8 @@ packages:
   '@tokenizer/token@0.3.0':
     resolution: {integrity: sha512-OvjF+z51L3ov0OyAU0duzsYuvO01PH7x4t6DJx+guahgTnBHkhJdG7soQeTSFLWN3efnHyibZ4Z8l2EuWwJN3A==}
 
-  '@tybys/wasm-util@0.10.1':
-    resolution: {integrity: sha512-9tTaPJLSiejZKx+Bmog4uSubteqTvFrVrURwkmHixBo0G4seD0zUxp98E1DzUBJxLQ3NPwXrGKDiVjwx/DpPsg==}
+  '@tybys/wasm-util@0.10.2':
+    resolution: {integrity: sha512-RoBvJ2X0wuKlWFIjrwffGw1IqZHKQqzIchKaadZZfnNpsAYp2mM0h36JtPCjNDAHGgYez/15uMBpfGwchhiMgg==}
 
   '@types/argparse@1.0.38':
     resolution: {integrity: sha512-ebDJ9b0e702Yr7pWgB0jzm+CX4Srzz8RcXtLJDJB+BSccqMa36uyH/zUsSYao5+BD1ytv3k3rPYCq4mAE1hsXA==}
@@ -1185,6 +1185,10 @@ packages:
 
   '@ungap/structured-clone@1.3.0':
     resolution: {integrity: sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==}
+    deprecated: Potential CWE-502 - Update to 1.3.1 or higher
+
+  '@ungap/structured-clone@1.3.1':
+    resolution: {integrity: sha512-mUFwbeTqrVgDQxFveS+df2yfap6iuP20NAKAsBt5jDEoOTDew+zwLAOilHCeQJOVSvmgCX4ogqIrA0mnyr08yQ==}
 
   '@unrs/resolver-binding-android-arm-eabi@1.11.1':
     resolution: {integrity: sha512-ppLRUgHVaGRWUx0R0Ut06Mjo9gBaBkg3v/8AxusGLhsIotbBLuRk51rAzqLC8gq6NyyAojEXglNjzf6R948DNw==}
@@ -1587,8 +1591,8 @@ packages:
   axios@1.13.5:
     resolution: {integrity: sha512-cz4ur7Vb0xS4/KUN0tPWe44eqxrIu31me+fbang3ijiNscE129POzipJJA6zniq2C/Z6sJCjMimjS8Lc/GAs8Q==}
 
-  axios@1.15.2:
-    resolution: {integrity: sha512-wLrXxPtcrPTsNlJmKjkPnNPK2Ihe0hn0wGSaTEiHRPxwjvJwT3hKmXF4dpqxmPO9SoNb2FsYXj/xEo0gHN+D5A==}
+  axios@1.16.0:
+    resolution: {integrity: sha512-6hp5CwvTPlN2A31g5dxnwAX0orzM7pmCRDLnZSX772mv8WDqICwFjowHuPs04Mc8deIld1+ejhtaMn5vp6b+1w==}
 
   bail@2.0.2:
     resolution: {integrity: sha512-0xO6mYd7JB2YesxDKplafRpsiOzPt9V02ddPCLbY1xYGPOX24NTyN50qnUxgCPcSoYMhKpAuBTjQoRZCAkUDRw==}
@@ -2288,8 +2292,8 @@ packages:
   fast-levenshtein@2.0.6:
     resolution: {integrity: sha512-DCXu6Ifhqcks7TZKY3Hxp3y6qphY5SJZmrWMDrKcERSOXWQdMhU9Ig/PYrzyw/ul9jOIyh0N4M0tbC5hodg8dw==}
 
-  fast-uri@3.1.0:
-    resolution: {integrity: sha512-iPeeDKJSWf4IEOasVVrknXpaBV0IApz/gp7S2bb7Z4Lljbl2MGJRqInZiUrQwV16cpzw/D3S5j5Julj/gT52AA==}
+  fast-uri@3.1.2:
+    resolution: {integrity: sha512-rVjf7ArG3LTk+FS6Yw81V1DLuZl1bRbNrev6Tmd/9RaroeeRRJhAt7jg/6YFxbvAQXUCavSoZhPPj6oOx+5KjQ==}
 
   fast-xml-builder@1.1.5:
     resolution: {integrity: sha512-4TJn/8FKLeslLAH3dnohXqE3QSoxkhvaMzepOIZytwJXZO69Bfz0HBdDHzOTOon6G59Zrk6VQ2bEiv1t61rfkA==}
@@ -2690,6 +2694,10 @@ packages:
 
   is-core-module@2.16.1:
     resolution: {integrity: sha512-UfoeMA6fIJ8wTYFEUjelnaGI67v6+N7qXJEvQuIGa99l4xsCruSYOVSQ0uPANn4dAzm8lkYPaKLrrijLq7x23w==}
+    engines: {node: '>= 0.4'}
+
+  is-core-module@2.16.2:
+    resolution: {integrity: sha512-evOr8xfXKxE6qSR0hSXL2r3sd7ALj8+7jQEUvPYcm5sgZFdJ+AYzT6yNmJenvIYQBgIGwfwz08sL8zoL7yq2BA==}
     engines: {node: '>= 0.4'}
 
   is-data-view@1.0.2:
@@ -3393,6 +3401,10 @@ packages:
 
   postcss@8.5.13:
     resolution: {integrity: sha512-qif0+jGGZoLWdHey3UFHHWP0H7Gbmsk8T5VEqyYFbWqPr1XqvLGBbk/sl8V5exGmcYJklJOhOQq1pV9IcsiFag==}
+    engines: {node: ^10 || ^12 || >=14}
+
+  postcss@8.5.14:
+    resolution: {integrity: sha512-SoSL4+OSEtR99LHFZQiJLkT59C5B1amGO1NzTwj7TT1qCUgUO6hxOvzkOYxD+vMrXBM3XJIKzokoERdqQq/Zmg==}
     engines: {node: ^10 || ^12 || >=14}
 
   postcss@8.5.6:
@@ -4823,7 +4835,7 @@ snapshots:
     dependencies:
       '@emnapi/core': 1.10.0
       '@emnapi/runtime': 1.10.0
-      '@tybys/wasm-util': 0.10.1
+      '@tybys/wasm-util': 0.10.2
     optional: true
 
   '@nextcloud/auth@2.5.3':
@@ -4848,7 +4860,7 @@ snapshots:
   '@nextcloud/axios@2.6.0':
     dependencies:
       '@nextcloud/auth': 2.6.0
-      axios: 1.15.2
+      axios: 1.16.0
     transitivePeerDependencies:
       - debug
 
@@ -4934,9 +4946,9 @@ snapshots:
     dependencies:
       '@nextcloud/auth': 2.6.0
 
-  '@nextcloud/notify_push@1.3.1':
+  '@nextcloud/notify_push@1.4.0':
     dependencies:
-      '@nextcloud/axios': 2.5.2
+      '@nextcloud/axios': 2.6.0
       '@nextcloud/capabilities': 1.2.1
       '@nextcloud/event-bus': 3.3.3
     transitivePeerDependencies:
@@ -4964,10 +4976,10 @@ snapshots:
     optionalDependencies:
       '@nextcloud/files': 4.0.0
 
-  '@nextcloud/stylelint-config@3.2.1(stylelint-config-recommended-scss@17.0.0(postcss@8.5.13)(stylelint@17.3.0(typescript@5.9.3)))(stylelint-config-recommended-vue@1.6.1(postcss-html@1.8.1)(stylelint@17.3.0(typescript@5.9.3)))(stylelint@17.3.0(typescript@5.9.3))':
+  '@nextcloud/stylelint-config@3.2.1(stylelint-config-recommended-scss@17.0.0(postcss@8.5.14)(stylelint@17.3.0(typescript@5.9.3)))(stylelint-config-recommended-vue@1.6.1(postcss-html@1.8.1)(stylelint@17.3.0(typescript@5.9.3)))(stylelint@17.3.0(typescript@5.9.3))':
     dependencies:
       stylelint: 17.3.0(typescript@5.9.3)
-      stylelint-config-recommended-scss: 17.0.0(postcss@8.5.13)(stylelint@17.3.0(typescript@5.9.3))
+      stylelint-config-recommended-scss: 17.0.0(postcss@8.5.14)(stylelint@17.3.0(typescript@5.9.3))
       stylelint-config-recommended-vue: 1.6.1(postcss-html@1.8.1)(stylelint@17.3.0(typescript@5.9.3))
       stylelint-use-logical: 2.1.3(stylelint@17.3.0(typescript@5.9.3))
 
@@ -5293,7 +5305,7 @@ snapshots:
 
   '@tokenizer/token@0.3.0': {}
 
-  '@tybys/wasm-util@0.10.1':
+  '@tybys/wasm-util@0.10.2':
     dependencies:
       tslib: 2.8.1
     optional: true
@@ -5440,6 +5452,8 @@ snapshots:
       eslint-visitor-keys: 3.4.3
 
   '@ungap/structured-clone@1.3.0': {}
+
+  '@ungap/structured-clone@1.3.1': {}
 
   '@unrs/resolver-binding-android-arm-eabi@1.11.1':
     optional: true
@@ -5772,7 +5786,7 @@ snapshots:
   ajv@8.20.0:
     dependencies:
       fast-deep-equal: 3.1.3
-      fast-uri: 3.1.0
+      fast-uri: 3.1.2
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
@@ -5894,7 +5908,7 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  axios@1.15.2:
+  axios@1.16.0:
     dependencies:
       follow-redirects: 1.16.0
       form-data: 4.0.5
@@ -6549,7 +6563,7 @@ snapshots:
   eslint-import-resolver-node@0.3.10:
     dependencies:
       debug: 3.2.7
-      is-core-module: 2.16.1
+      is-core-module: 2.16.2
       resolve: 2.0.0-next.6
     transitivePeerDependencies:
       - supports-color
@@ -6600,7 +6614,7 @@ snapshots:
       eslint-import-resolver-node: 0.3.10
       eslint-module-utils: 2.12.1(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1)
       hasown: 2.0.3
-      is-core-module: 2.16.1
+      is-core-module: 2.16.2
       is-glob: 4.0.3
       minimatch: 3.1.5
       object.fromentries: 2.0.8
@@ -6641,7 +6655,7 @@ snapshots:
       globals: 13.24.0
       ignore: 5.3.2
       is-builtin-module: 3.2.1
-      is-core-module: 2.16.1
+      is-core-module: 2.16.2
       minimatch: 3.1.5
       resolve: 1.22.12
       semver: 7.7.4
@@ -6687,7 +6701,7 @@ snapshots:
       '@humanwhocodes/config-array': 0.13.0
       '@humanwhocodes/module-importer': 1.0.1
       '@nodelib/fs.walk': 1.2.8
-      '@ungap/structured-clone': 1.3.0
+      '@ungap/structured-clone': 1.3.1
       ajv: 6.15.0
       chalk: 4.1.2
       cross-spawn: 7.0.6
@@ -6783,7 +6797,7 @@ snapshots:
 
   fast-levenshtein@2.0.6: {}
 
-  fast-uri@3.1.0: {}
+  fast-uri@3.1.2: {}
 
   fast-xml-builder@1.1.5:
     dependencies:
@@ -7235,6 +7249,10 @@ snapshots:
   is-core-module@2.16.1:
     dependencies:
       hasown: 2.0.2
+
+  is-core-module@2.16.2:
+    dependencies:
+      hasown: 2.0.3
 
   is-data-view@1.0.2:
     dependencies:
@@ -8046,24 +8064,24 @@ snapshots:
     dependencies:
       htmlparser2: 8.0.2
       js-tokens: 9.0.1
-      postcss: 8.5.13
-      postcss-safe-parser: 6.0.0(postcss@8.5.13)
+      postcss: 8.5.14
+      postcss-safe-parser: 6.0.0(postcss@8.5.14)
 
   postcss-media-query-parser@0.2.3: {}
 
   postcss-resolve-nested-selector@0.1.6: {}
 
-  postcss-safe-parser@6.0.0(postcss@8.5.13):
+  postcss-safe-parser@6.0.0(postcss@8.5.14):
     dependencies:
-      postcss: 8.5.13
+      postcss: 8.5.14
 
-  postcss-safe-parser@7.0.1(postcss@8.5.13):
+  postcss-safe-parser@7.0.1(postcss@8.5.14):
     dependencies:
-      postcss: 8.5.13
+      postcss: 8.5.14
 
-  postcss-scss@4.0.9(postcss@8.5.13):
+  postcss-scss@4.0.9(postcss@8.5.14):
     dependencies:
-      postcss: 8.5.13
+      postcss: 8.5.14
 
   postcss-selector-parser@6.1.2:
     dependencies:
@@ -8078,6 +8096,12 @@ snapshots:
   postcss-value-parser@4.2.0: {}
 
   postcss@8.5.13:
+    dependencies:
+      nanoid: 3.3.12
+      picocolors: 1.1.1
+      source-map-js: 1.2.1
+
+  postcss@8.5.14:
     dependencies:
       nanoid: 3.3.12
       picocolors: 1.1.1
@@ -8264,14 +8288,14 @@ snapshots:
   resolve@1.22.12:
     dependencies:
       es-errors: 1.3.0
-      is-core-module: 2.16.1
+      is-core-module: 2.16.2
       path-parse: 1.0.7
       supports-preserve-symlinks-flag: 1.0.0
 
   resolve@2.0.0-next.6:
     dependencies:
       es-errors: 1.3.0
-      is-core-module: 2.16.1
+      is-core-module: 2.16.2
       node-exports-info: 1.6.0
       object-keys: 1.1.1
       path-parse: 1.0.7
@@ -8636,14 +8660,14 @@ snapshots:
       postcss-html: 1.8.1
       stylelint: 17.3.0(typescript@5.9.3)
 
-  stylelint-config-recommended-scss@17.0.0(postcss@8.5.13)(stylelint@17.3.0(typescript@5.9.3)):
+  stylelint-config-recommended-scss@17.0.0(postcss@8.5.14)(stylelint@17.3.0(typescript@5.9.3)):
     dependencies:
-      postcss-scss: 4.0.9(postcss@8.5.13)
+      postcss-scss: 4.0.9(postcss@8.5.14)
       stylelint: 17.3.0(typescript@5.9.3)
       stylelint-config-recommended: 18.0.0(stylelint@17.3.0(typescript@5.9.3))
       stylelint-scss: 7.0.0(stylelint@17.3.0(typescript@5.9.3))
     optionalDependencies:
-      postcss: 8.5.13
+      postcss: 8.5.14
 
   stylelint-config-recommended-vue@1.6.1(postcss-html@1.8.1)(stylelint@17.3.0(typescript@5.9.3)):
     dependencies:
@@ -8705,8 +8729,8 @@ snapshots:
       micromatch: 4.0.8
       normalize-path: 3.0.0
       picocolors: 1.1.1
-      postcss: 8.5.13
-      postcss-safe-parser: 7.0.1(postcss@8.5.13)
+      postcss: 8.5.14
+      postcss-safe-parser: 7.0.1(postcss@8.5.14)
       postcss-selector-parser: 7.1.1
       postcss-value-parser: 4.2.0
       string-width: 8.2.1
