@@ -366,7 +366,7 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
 	.weekplanner {
-		min-height: 100vh;
+		min-height: 100%;
 		padding: 8px;
 	}
 
@@ -376,33 +376,40 @@ onUnmounted(() => {
 		gap: 8px;
 	}
 
-	/* Flatten the two grid wrappers and the weekend wrapper so every
-	   weekday, weekend half, and custom column becomes a direct flex
-	   child of .weekplanner. That gives them all an equal initial
-	   share of the viewport via `flex: 1 1 0`, and lets any overflow
-	   push the page taller (whole-page scroll). */
-	.week-grid,
-	.weekend-column,
-	.custom-columns-grid {
-		display: contents;
-	}
-
-	.day-column,
-	.weekend-half,
-	.custom-column {
-		flex: 1 1 0;
+	/* Stack everything vertically. We give every column the same
+	   min-height so they look equal on first paint; columns grow
+	   independently as tasks are added, and total overflow scrolls
+	   the page (NcAppContent), never an individual column. */
+	.week-grid {
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+		flex: none;
 		min-height: 0;
-		background-color: var(--color-main-background);
-		border-bottom: 1px solid var(--color-border);
-	}
-
-	.day-column:first-of-type {
-		border-top: 1px solid var(--color-border);
 		border-radius: 8px 8px 0 0;
 	}
 
-	.custom-column:last-of-type {
+	.week-grid .weekend-column {
+		gap: 0;
+	}
+
+	.week-grid .day-column,
+	.week-grid .weekend-half {
+		min-height: 200px;
+	}
+
+	.custom-columns-grid {
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+		flex: none;
+		border-top: 1px solid var(--color-border);
 		border-radius: 0 0 8px 8px;
+	}
+
+	.custom-columns-grid .custom-column {
+		grid-column: span 1;
+		min-height: 200px;
 	}
 }
 </style>
