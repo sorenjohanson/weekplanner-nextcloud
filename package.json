@@ -15,7 +15,7 @@
     "extends @nextcloud/browserslist-config"
   ],
   "dependencies": {
-    "@nextcloud/axios": "^2.5.2",
+    "@nextcloud/axios": "^2.6.0",
     "@nextcloud/notify_push": "^1.4.0",
     "@nextcloud/router": "^3.1.0",
     "@nextcloud/vue": "^9.7.0",
