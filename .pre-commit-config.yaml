@@ -1,0 +1,41 @@
+# Run with:
+#   pre-commit install --hook-type pre-push
+#
+# Pre-push (not pre-commit) is intentional: every commit doesn't need to
+# pay for the full test/lint/psalm suite, and CI is the merge gate.
+# Pre-push catches regressions before they reach the remote.
+
+repos:
+  - repo: local
+    hooks:
+      - id: check-debug-statements
+        name: Check for debug statements (console.*, var_dump, die, dd)
+        entry: python3 tools/hooks/check-debug-statements.py
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true
+
+      - id: pnpm-test
+        name: pnpm test
+        entry: pnpm test
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true
+
+      - id: pnpm-lint
+        name: pnpm run lint
+        entry: pnpm run lint
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true
+
+      - id: psalm
+        name: psalm
+        entry: vendor/bin/psalm
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true

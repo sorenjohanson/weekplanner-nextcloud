@@ -1,0 +1,33 @@
+name: Check version sync
+
+on:
+  pull_request:
+    paths:
+      - package.json
+      - appinfo/info.xml
+  push:
+    branches:
+      - main
+    paths:
+      - package.json
+      - appinfo/info.xml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-version-sync-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: package.json and appinfo/info.xml in sync
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Run check
+        run: python3 tools/ci/check-version-sync.py

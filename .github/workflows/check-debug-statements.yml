@@ -1,0 +1,29 @@
+name: Check debug statements
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-debug-statements-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: No debug statements introduced
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Run check
+        env:
+          PRE_COMMIT_FROM_REF: origin/${{ github.event.pull_request.base.ref }}
+          PRE_COMMIT_TO_REF: ${{ github.event.pull_request.head.sha }}
+        run: python3 tools/hooks/check-debug-statements.py

@@ -16,6 +16,28 @@ A Nextcloud app that gives you a weekly overview of your tasks. Plan your week b
 
 - Recurring tasks
 
+## Development
+
+### Pre-push hooks
+
+Local pre-push hooks run the test suite, linters, psalm and a debug-statement
+check before a push reaches the remote. They are managed via
+[`pre-commit`](https://pre-commit.com/):
+
+```bash
+pipx install pre-commit            # or: pip install --user pre-commit
+pnpm install                       # `prepare` script wires up the pre-push hook
+```
+
+If `pre-commit` isn't on `PATH` when `pnpm install` runs, the `prepare` script
+silently no-ops; install pre-commit and re-run `pnpm install` (or run
+`pre-commit install --hook-type pre-push` directly) to activate the hook.
+
+The configuration lives in `.pre-commit-config.yaml`. CI enforces the same
+checks (plus version-sync and version-bump rules) on pull requests, so the
+local hook is fast feedback rather than a hard gate — a contributor who
+never installs it will still be blocked at the PR.
+
 ## Licence
 
 This project is licenced under the [GNU AGPL v3 or later](LICENSE).

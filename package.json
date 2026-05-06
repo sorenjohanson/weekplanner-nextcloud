@@ -1,11 +1,12 @@
 {
   "name": "weekplanner",
-  "version": "1.8.4",
+  "version": "1.9.0",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "scripts": {
     "build": "vite build",
     "dev": "vite --mode development build",
+    "prepare": "command -v pre-commit >/dev/null && pre-commit install --hook-type pre-push >/dev/null 2>&1 || true",
     "test": "vitest run",
     "lint": "eslint src",
     "stylelint": "stylelint src/**/*.vue src/**/*.scss src/**/*.css",
