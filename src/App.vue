@@ -230,9 +230,8 @@ onUnmounted(() => {
 .weekplanner {
 	display: flex;
 	flex-direction: column;
-	height: 100%;
+	min-height: 100%;
 	padding: 16px;
-	overflow-y: auto;
 }
 
 .weekplanner-header {
@@ -258,9 +257,15 @@ onUnmounted(() => {
 .week-grid {
 	display: grid;
 	grid-template-columns: repeat(5, 1fr) 0.8fr;
-	grid-template-rows: minmax(480px, auto);
 	gap: 1px;
-	flex-shrink: 0;
+	flex: 1 0 auto;
+	/* Pin the weekdays' height so custom-columns can never steal
+	   space from them: as soon as custom grows beyond its minimum,
+	   it pushes the page taller instead of shrinking week-grid.
+	   Reserved (~400px) ≈ NC top bar (~50) + weekplanner padding
+	   (32) + weekplanner-header (~60) + custom-columns minimum
+	   (260). Falls back to 240px on very short viewports. */
+	min-height: max(240px, calc(100vh - 400px));
 	background-color: var(--color-border);
 	border: 1px solid var(--color-border);
 	border-radius: 8px 8px 0 0;
@@ -325,9 +330,9 @@ onUnmounted(() => {
 .custom-columns-grid {
 	display: grid;
 	grid-template-columns: repeat(5, 1fr) 0.8fr;
-	grid-template-rows: minmax(280px, auto);
+	grid-template-rows: minmax(260px, auto);
 	gap: 1px;
-	flex-shrink: 0;
+	flex: 0 0 auto;
 	background-color: var(--color-border);
 	border: 1px solid var(--color-border);
 	border-top: none;
@@ -367,10 +372,8 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
 	.weekplanner {
-		height: auto;
 		min-height: 100%;
-		overflow-y: auto;
-		-webkit-overflow-scrolling: touch;
+		padding: 8px;
 	}
 
 	.weekplanner-header {
@@ -379,39 +382,40 @@ onUnmounted(() => {
 		gap: 8px;
 	}
 
+	/* Stack everything vertically. We give every column the same
+	   min-height so they look equal on first paint; columns grow
+	   independently as tasks are added, and total overflow scrolls
+	   the page (NcAppContent), never an individual column. */
 	.week-grid {
 		display: flex;
 		flex-direction: column;
 		gap: 0;
 		flex: none;
-		height: auto;
-		min-height: unset;
-		overflow: visible;
+		min-height: 0;
 		border-radius: 8px 8px 0 0;
-	}
-
-	.week-grid .day-column,
-	.week-grid .weekend-half {
-		min-height: 80px;
 	}
 
 	.week-grid .weekend-column {
 		gap: 0;
 	}
 
+	.week-grid .day-column,
+	.week-grid .weekend-half {
+		min-height: 200px;
+	}
+
 	.custom-columns-grid {
 		display: flex;
 		flex-direction: column;
 		gap: 0;
+		flex: none;
 		border-top: 1px solid var(--color-border);
 		border-radius: 0 0 8px 8px;
-		height: auto;
-		min-height: unset;
 	}
 
 	.custom-columns-grid .custom-column {
 		grid-column: span 1;
-		min-height: auto;
+		min-height: 200px;
 	}
 }
 </style>
