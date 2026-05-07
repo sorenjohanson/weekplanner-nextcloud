@@ -1,0 +1,10 @@
+{
+    "require-dev": {
+        "phpseclib/phpseclib": "~3.0.0"
+    },
+    "config": {
+        "platform": {
+            "php": "8.1"
+        }
+    }
+}

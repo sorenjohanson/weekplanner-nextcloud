@@ -106,6 +106,15 @@ jobs:
           PUPPETEER_SKIP_DOWNLOAD: true
         run: pnpm install --frozen-lockfile
 
+      - name: Install signing tooling (phpseclib3 in vendor-bin/signing)
+        run: |
+          # tools/sign-app.php and tools/verify-app-signature.php require
+          # phpseclib3 to produce / verify RSA-PSS signatures matching
+          # Nextcloud's Checker scheme. Install via composer-bin without
+          # pulling in the rest of the dev tooling.
+          composer install --no-progress --no-interaction --no-scripts
+          composer bin signing install --no-progress --no-interaction
+
       - name: Build frontend
         run: |
           rm -rf js css
@@ -141,17 +150,23 @@ jobs:
         run: |
           echo "$APP_PRIVATE_KEY" > /tmp/app.key
           curl -sf https://raw.githubusercontent.com/nextcloud/app-certificate-requests/master/weekplanner/weekplanner.crt > /tmp/app.crt
-          # sign-app.php aborts if the cert public key doesn't match the
-          # private key — that mismatch is the most likely cause of the
-          # "Signature could not get verified" integrity error reported
-          # against v1.8.1.
+          # sign-app.php produces an RSA-PSS signature with hash=sha1,
+          # MGF1-hash=sha512, salt-length=0 — the exact scheme Nextcloud's
+          # lib/private/IntegrityCheck/Checker.php verifies against. Drifting
+          # from this scheme (e.g. using openssl_sign+SHA512, which is
+          # PKCS#1 v1.5) produces a signature.json that internally
+          # self-verifies but is rejected at install time with
+          # "Signature could not get verified." — that was the bug
+          # introduced in v1.8.3 (and inherited by v1.9.0). The script
+          # also aborts on cert/key mismatch (the v1.8.1 bug).
           php tools/sign-app.php "/tmp/${APP_ID}" /tmp/app.key /tmp/app.crt
           rm -f /tmp/app.key /tmp/app.crt
 
       - name: Verify signature locally (mirrors Nextcloud integrity check)
         if: steps.signing.outputs.available == 'true'
         run: |
-          # Runs the same checks as `occ integrity:check-app weekplanner`.
+          # Runs the same checks as `occ integrity:check-app weekplanner`,
+          # using PSS verification with the same parameters Nextcloud uses.
           # If this fails the release is aborted before publishing, so users
           # never see "Signature could not get verified" in the admin panel.
           php tools/verify-app-signature.php "/tmp/${APP_ID}" --cn="${APP_ID}"

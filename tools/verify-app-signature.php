@@ -6,9 +6,15 @@
  *
  * Mirrors lib/private/IntegrityCheck/Checker::verify() for an app path:
  *   1. Load signature.json, ksort hashes, decode signature.
- *   2. Verify RSA-SHA512 PKCS#1 v1.5 signature over json_encode(hashes)
- *      using the public key embedded in the bundled certificate.
- *   3. Re-hash the app directory and report any missing / extra / changed
+ *   2. Verify the bundled certificate chains to the configured root CA
+ *      (Nextcloud's resources/codesigning/root.crt — which actually contains
+ *      the intermediate "Nextcloud Code Signing Intermediate Authority").
+ *   3. Verify the RSA-PSS signature over json_encode(hashes) using
+ *      hash=sha1, MGF1-hash=sha512, salt-length=0 — the exact scheme
+ *      Nextcloud's Checker uses. PKCS#1 v1.5 signatures (e.g. anything
+ *      produced by openssl_sign with OPENSSL_ALGO_SHA512) will be rejected
+ *      here, the same way Nextcloud rejects them.
+ *   4. Re-hash the app directory and report any missing / extra / changed
  *      files vs the stored hashes.
  *
  * Optional flags:
@@ -27,6 +33,11 @@
  */
 
 declare(strict_types=1);
+
+require __DIR__ . '/../vendor-bin/signing/vendor/autoload.php';
+
+use phpseclib3\Crypt\RSA;
+use phpseclib3\File\X509;
 
 if ($argc < 2) {
 	fwrite(STDERR, "Usage: php verify-app-signature.php <appPath> [--root-ca=<path>] [--cn=<appId>]\n");
@@ -68,39 +79,39 @@ if ($signature === false) {
 	fwrite(STDERR, "::error::signature.json signature field is not valid base64\n");
 	exit(1);
 }
-$certificate = $signatureData['certificate'];
+$certificatePem = $signatureData['certificate'];
 
-// 2. Optional CA chain check.
+$x509 = new X509();
+if ($x509->loadX509($certificatePem) === false) {
+	fwrite(STDERR, "::error::Failed to parse bundled certificate\n");
+	exit(1);
+}
+
+// 2. Optional CA chain check — replicates Nextcloud's Checker::verify(), which
+//    walks splitCerts(root.crt) and calls $x509->loadCA on each. The PEM file
+//    in resources/codesigning/root.crt is actually a single intermediate
+//    cert ("Nextcloud Code Signing Intermediate Authority"); we accept it as
+//    a chain anchor here for parity.
 if ($rootCaPath !== null) {
-	$rootCa = @file_get_contents($rootCaPath);
-	if ($rootCa === false) {
+	$rootCaPem = @file_get_contents($rootCaPath);
+	if ($rootCaPem === false) {
 		fwrite(STDERR, "::error::Failed to read root CA: $rootCaPath\n");
 		exit(1);
 	}
-	// openssl_x509_verify isn't a chain verifier, so use openssl_pkey_get_public on the CA
-	// and call openssl verify equivalent via a tempfile + `openssl verify` is heavy.
-	// We instead extract the CA's public key, then manually verify via openssl_x509_parse
-	// for sanity. Full chain validation is the server's job; we only catch obvious mismatches.
-	$caParsed = openssl_x509_parse($rootCa);
-	$certParsed = openssl_x509_parse($certificate);
-	if ($caParsed === false || $certParsed === false) {
-		fwrite(STDERR, "::error::Failed to parse certificate(s)\n");
-		exit(1);
+	foreach (splitCerts($rootCaPem) as $rootCert) {
+		$x509->loadCA($rootCert);
 	}
-	if (($certParsed['issuer']['CN'] ?? null) !== ($caParsed['subject']['CN'] ?? null)) {
-		fwrite(STDERR, sprintf(
-			"::error::Certificate issuer CN (%s) does not match root CA CN (%s)\n",
-			$certParsed['issuer']['CN'] ?? '?',
-			$caParsed['subject']['CN'] ?? '?',
-		));
+	// Re-load the leaf so phpseclib re-evaluates issuer linkage with the CA(s) loaded.
+	$x509->loadX509($certificatePem);
+	if (!$x509->validateSignature()) {
+		fwrite(STDERR, "::error::Certificate chain does not validate against $rootCaPath\n");
 		exit(1);
 	}
 }
 
 // 3. Optional CN check.
 if ($expectedCN !== null) {
-	$certParsed = openssl_x509_parse($certificate);
-	$cn = $certParsed['subject']['CN'] ?? null;
+	$cn = $x509->getDN(X509::DN_OPENSSL)['CN'] ?? null;
 	if ($cn !== $expectedCN) {
 		fwrite(STDERR, sprintf(
 			"::error::Certificate CN (%s) does not match expected app id (%s)\n",
@@ -111,15 +122,24 @@ if ($expectedCN !== null) {
 	}
 }
 
-// 4. Verify the RSA signature over json_encode(expectedHashes).
-$publicKey = openssl_pkey_get_public($certificate);
-if ($publicKey === false) {
-	fwrite(STDERR, "::error::Failed to extract public key from bundled certificate\n");
+// 4. Verify the RSA-PSS signature. These parameters must match
+//    lib/private/IntegrityCheck/Checker.php in Nextcloud server. Drifting
+//    from this scheme is what caused the v1.8.3 integrity-check regression
+//    (released as v1.8.3, v1.9.0 — see fix/signing).
+$publicKey = $x509->getPublicKey();
+if (!$publicKey instanceof RSA\PublicKey) {
+	fwrite(STDERR, "::error::Bundled certificate's public key is not RSA\n");
 	exit(1);
 }
-$verifyResult = openssl_verify(json_encode($expectedHashes), $signature, $publicKey, OPENSSL_ALGO_SHA512);
-if ($verifyResult !== 1) {
-	fwrite(STDERR, "::error::Signature could not get verified (openssl_verify returned $verifyResult).\n");
+$verifier = $publicKey
+	->withHash('sha1')
+	->withMGFHash('sha512')
+	->withSaltLength(0)
+	->withPadding(RSA::SIGNATURE_PSS);
+
+if (!$verifier->verify(json_encode($expectedHashes), $signature)) {
+	fwrite(STDERR, "::error::Signature could not get verified.\n");
+	fwrite(STDERR, "         (RSA-PSS / MGF1-SHA-512 / saltlen=0 over json_encode(ksort(hashes)).)\n");
 	fwrite(STDERR, "         This is the same error Nextcloud's integrity check would raise.\n");
 	exit(1);
 }
@@ -178,4 +198,16 @@ function computeHashes(string $appPath): array {
 		$hashes[$relativePath] = hash_file('sha512', $file->getPathname());
 	}
 	return $hashes;
+}
+
+/**
+ * Mirrors Nextcloud's Checker::splitCerts — accepts a PEM bundle and returns
+ * each individual certificate as its own PEM string.
+ */
+function splitCerts(string $bundle): array {
+	$out = [];
+	if (preg_match_all('/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/', $bundle, $m)) {
+		$out = $m[0];
+	}
+	return $out;
 }

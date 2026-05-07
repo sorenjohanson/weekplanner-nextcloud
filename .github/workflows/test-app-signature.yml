@@ -21,6 +21,7 @@ on:
       - 'tools/sign-app.php'
       - 'tools/verify-app-signature.php'
       - 'tools/test-app-signature.sh'
+      - 'vendor-bin/signing/composer.json'
       - '.github/workflows/test-app-signature.yml'
   push:
     branches:
@@ -29,6 +30,7 @@ on:
       - 'tools/sign-app.php'
       - 'tools/verify-app-signature.php'
       - 'tools/test-app-signature.sh'
+      - 'vendor-bin/signing/composer.json'
       - '.github/workflows/test-app-signature.yml'
   workflow_call:
 
@@ -48,6 +50,11 @@ jobs:
           extensions: openssl, json
           coverage: none
 
+      - name: Install signing tooling (phpseclib3 in vendor-bin/signing)
+        run: |
+          composer install --no-progress --no-interaction --no-scripts
+          composer bin signing install --no-progress --no-interaction
+
       - name: Run signing round-trip
         run: bash tools/test-app-signature.sh
 
@@ -66,6 +73,11 @@ jobs:
           php-version: '8.2'
           extensions: openssl, json
           coverage: none
+
+      - name: Install signing tooling (phpseclib3 in vendor-bin/signing)
+        run: |
+          composer install --no-progress --no-interaction --no-scripts
+          composer bin signing install --no-progress --no-interaction
 
       - name: Validate APP_PRIVATE_KEY against published weekplanner.crt
         env:
