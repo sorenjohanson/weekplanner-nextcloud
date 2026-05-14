@@ -14,6 +14,17 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "path=$(python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('file_path',''))\"); if echo \"$path\" | grep -qE '/src/.*\\.(vue|ts|tsx|js|jsx|mjs|cjs|css|scss)$'; then pnpm build 1>&2; fi"
+          }
+        ]
+      }
     ]
   }
 }
