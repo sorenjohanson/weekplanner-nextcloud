@@ -308,14 +308,14 @@ onMounted(() => {
 	background: none;
 	border: none;
 	cursor: pointer;
-	color: var(--color-error);
+	color: #c00;
 	font-size: 14px;
 	padding: 8px 16px;
 	border-radius: 6px;
 }
 
 .edit-delete-btn:hover {
-	background-color: color-mix(in srgb, var(--color-error) 10%, transparent);
+	background-color: rgba(200, 0, 0, 0.1);
 }
 
 .recurring-delete-overlay {
