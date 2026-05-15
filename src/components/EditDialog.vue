@@ -1,8 +1,20 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
-import type { Recurrence, TaskColor, RecurringDeleteMode } from '../types'
+import type { DayKey, Recurrence, TaskColor, RecurringDeleteMode } from '../types'
 import { TASK_COLORS } from '../types'
+
+export interface MoveDayOption {
+	key: DayKey
+	label: string
+	date: string
+	isToday: boolean
+}
+
+export interface MoveColumnOption {
+	id: string
+	title: string
+}
 
 defineProps<{
 	title: string
@@ -10,6 +22,9 @@ defineProps<{
 	recurrence: Recurrence
 	color: TaskColor
 	isRecurring: boolean
+	currentLocation: DayKey | string
+	moveDayOptions: MoveDayOption[]
+	moveColumnOptions: MoveColumnOption[]
 }>()
 
 const emit = defineEmits<{
@@ -19,6 +34,7 @@ const emit = defineEmits<{
 	'update:color': [value: TaskColor]
 	save: []
 	delete: [mode?: RecurringDeleteMode]
+	move: [target: DayKey | string]
 }>()
 
 const titleInput = ref<HTMLInputElement | null>(null)
@@ -115,6 +131,32 @@ onMounted(() => {
 						:style="{ backgroundColor: c.hex }"
 						:title="c.label"
 						@click="$emit('update:color', c.value)" />
+				</div>
+				<label class="edit-label edit-label-move">Move to</label>
+				<div class="edit-move-row">
+					<button
+						v-for="d in moveDayOptions"
+						:key="d.key"
+						type="button"
+						class="edit-move-chip"
+						:class="{ current: currentLocation === d.key, today: d.isToday }"
+						:disabled="currentLocation === d.key"
+						:title="d.date"
+						@click="emit('move', d.key)">
+						{{ d.label }}
+					</button>
+				</div>
+				<div v-if="moveColumnOptions.length" class="edit-move-row edit-move-row-columns">
+					<button
+						v-for="col in moveColumnOptions"
+						:key="col.id"
+						type="button"
+						class="edit-move-chip edit-move-chip-column"
+						:class="{ current: currentLocation === col.id }"
+						:disabled="currentLocation === col.id"
+						@click="emit('move', col.id)">
+						{{ col.title || 'Untitled column' }}
+					</button>
 				</div>
 			</div>
 			<div class="edit-dialog-footer">
@@ -294,6 +336,59 @@ onMounted(() => {
 .edit-color-none {
 	background-color: var(--color-main-background);
 	color: var(--color-text-maxcontrast);
+}
+
+.edit-label-move {
+	margin-top: 16px;
+}
+
+.edit-move-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.edit-move-row-columns {
+	margin-top: 6px;
+}
+
+.edit-move-chip {
+	flex: 0 1 auto;
+	padding: 6px 10px;
+	border: 1px solid var(--color-border-dark);
+	border-radius: 999px;
+	background-color: var(--color-main-background);
+	color: var(--color-main-text);
+	font-size: 12px;
+	font-family: inherit;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.edit-move-chip.current,
+.edit-move-chip:disabled {
+	background-color: var(--color-background-dark);
+	color: var(--color-text-maxcontrast);
+	cursor: default;
+	border-color: var(--color-border);
+}
+
+.edit-move-chip:hover:not(:disabled) {
+	border-color: var(--color-primary-element);
+	color: var(--color-primary-element);
+}
+
+.edit-move-chip.today:not(.current) {
+	border-color: var(--color-primary-element);
+	color: var(--color-primary-element);
+	font-weight: 600;
+}
+
+.edit-move-chip-column {
+	max-width: 160px;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .edit-dialog-footer {

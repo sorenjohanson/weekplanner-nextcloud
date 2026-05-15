@@ -19,6 +19,7 @@ export interface TaskEditingDeps {
 	flushCustomSaveTimeout: () => void
 	deleteCustomTask: (columnId: string, taskId: string) => void
 	materializeRecurringTasks: () => void
+	handleDragChange: () => boolean
 }
 
 export function useTaskEditing(deps: TaskEditingDeps) {
@@ -26,6 +27,7 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 		currentYear, currentWeek, weekData, weekDates, recurringTasks, customColumns,
 		debouncedSave, debouncedSaveCustomColumns, saveWeekNow, saveCustomColumnsNow,
 		flushSaveTimeout, flushCustomSaveTimeout, deleteCustomTask, materializeRecurringTasks,
+		handleDragChange,
 	} = deps
 	const editingTask = ref<{ day: DayKey | string; taskId: string } | null>(null)
 	const editTitle = ref('')
@@ -252,6 +254,82 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 		}
 	}
 
+	// Picker-driven move from the edit dialog.
+	//
+	// For a recurring task moved between two day slots we intentionally diverge
+	// from drag semantics: drag adds an exception so future weeks keep the old
+	// pattern, but picker users explicitly chose "Sunday" — they expect the
+	// recurrence to follow. So we update the definition's startDate / dayOfWeek
+	// / dayOfMonth and drop now-stale exceptions before startDate.
+	//
+	// All other paths (non-recurring, or recurring involving a custom column)
+	// reuse handleDragChange so cross-list bookkeeping (originalDate, exception
+	// dates for moved instances) stays consistent with the drag flow.
+	function moveEditingTask(target: DayKey | string) {
+		if (!editingTask.value) return
+		const { day: sourceDay, taskId } = editingTask.value
+		if (target === sourceDay) {
+			editingTask.value = null
+			return
+		}
+
+		let task: Task | undefined
+		if (isCustomColumn(sourceDay)) {
+			const col = customColumns.value.find((c) => c.id === sourceDay)
+			if (col) {
+				const idx = col.tasks.findIndex((t) => t.id === taskId)
+				if (idx !== -1) task = col.tasks.splice(idx, 1)[0]
+			}
+		} else {
+			const arr = weekData.value.days[sourceDay as DayKey]
+			const idx = arr.findIndex((t) => t.id === taskId)
+			if (idx !== -1) task = arr.splice(idx, 1)[0]
+		}
+		if (!task) {
+			editingTask.value = null
+			return
+		}
+
+		const sourceIsDay = !isCustomColumn(sourceDay)
+		const targetIsDay = !isCustomColumn(target)
+		const isRecurringDayToDay = !!task.recurringSourceId && sourceIsDay && targetIsDay
+
+		if (isRecurringDayToDay) {
+			const def = recurringTasks.value.find((d) => d.id === task!.recurringSourceId)
+			if (def) {
+				const targetIdx = ALL_KEYS.indexOf(target as DayKey)
+				const targetDateStr = toDateStr(weekDates.value[targetIdx])
+				const targetDate = weekDates.value[targetIdx]
+				def.startDate = targetDateStr
+				def.dayOfWeek = targetIdx
+				def.dayOfMonth = targetDate.getDate()
+				def.exceptionDates = def.exceptionDates.filter((d) => d >= targetDateStr)
+				task.recurringOriginalDate = targetDateStr
+			}
+		}
+
+		if (targetIsDay) {
+			const targetArr = weekData.value.days[target as DayKey]
+			const duplicate = task.recurringSourceId
+				? targetArr.find((t) => t.recurringSourceId === task!.recurringSourceId)
+				: undefined
+			if (!duplicate) {
+				targetArr.push(task)
+			}
+		} else {
+			const col = customColumns.value.find((c) => c.id === target)
+			if (col) col.tasks.push(task)
+		}
+
+		if (!isRecurringDayToDay) {
+			handleDragChange()
+		}
+		materializeRecurringTasks()
+		debouncedSave()
+		debouncedSaveCustomColumns()
+		editingTask.value = null
+	}
+
 	const editingTaskIsRecurring = computed(() => {
 		if (!editingTask.value) return false
 		const { day, taskId } = editingTask.value
@@ -278,5 +356,6 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 		deleteEditingTask,
 		addTask,
 		toggleDone,
+		moveEditingTask,
 	}
 }

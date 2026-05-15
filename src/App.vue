@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import NcAppContent from '@nextcloud/vue/components/NcAppContent'
 import NcContent from '@nextcloud/vue/components/NcContent'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import type { RecurringTaskDefinition, WeekData } from './types'
-import { WEEKDAY_KEYS, WEEKEND_KEYS, DAY_LABELS } from './types'
+import { WEEKDAY_KEYS, WEEKEND_KEYS, ALL_KEYS, DAY_LABELS } from './types'
 import TaskList from './components/TaskList.vue'
 import EditDialog from './components/EditDialog.vue'
 import { emptyWeek } from './utils/weekData'
@@ -41,7 +41,7 @@ const recurring = useRecurringTasks(
 
 const {
 	editingTask, editingTaskIsRecurring, editTitle, editNotes, editRecurrence, editColor,
-	newTasks, openEdit, saveEdit, deleteEditingTask, addTask, toggleDone,
+	newTasks, openEdit, saveEdit, deleteEditingTask, addTask, toggleDone, moveEditingTask,
 } = useTaskEditing({
 	currentYear,
 	currentWeek,
@@ -57,7 +57,20 @@ const {
 	flushCustomSaveTimeout: columns.flushCustomSaveTimeout,
 	deleteCustomTask: columns.deleteCustomTask,
 	materializeRecurringTasks: recurring.materializeRecurringTasks,
+	handleDragChange: recurring.handleDragChange,
 })
+
+const moveDayOptions = computed(() => ALL_KEYS.map((key) => ({
+	key,
+	label: DAY_LABELS[key],
+	date: formatDate(key),
+	isToday: isToday(key),
+})))
+
+const moveColumnOptions = computed(() => customColumns.value.map((c) => ({
+	id: c.id,
+	title: c.title,
+})))
 
 const polling = usePolling({
 	currentYear,
@@ -215,12 +228,16 @@ onUnmounted(() => {
 					:recurrence="editRecurrence"
 					:color="editColor"
 					:is-recurring="editingTaskIsRecurring"
+					:current-location="editingTask.day"
+					:move-day-options="moveDayOptions"
+					:move-column-options="moveColumnOptions"
 					@update:title="editTitle = $event"
 					@update:notes="editNotes = $event"
 					@update:recurrence="editRecurrence = $event"
 					@update:color="editColor = $event"
 					@save="saveEdit"
-					@delete="deleteEditingTask($event)" />
+					@delete="deleteEditingTask($event)"
+					@move="moveEditingTask($event)" />
 			</div>
 		</NcAppContent>
 	</NcContent>

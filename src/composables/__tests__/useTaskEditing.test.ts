@@ -27,6 +27,7 @@ function setup(options: {
 	const flushCustomSaveTimeout = vi.fn()
 	const deleteCustomTask = vi.fn()
 	const materializeRecurringTasks = vi.fn()
+	const handleDragChange = vi.fn(() => false)
 
 	const editing = useTaskEditing({
 		currentYear,
@@ -43,6 +44,7 @@ function setup(options: {
 		flushCustomSaveTimeout,
 		deleteCustomTask,
 		materializeRecurringTasks,
+		handleDragChange,
 	})
 
 	return {
@@ -58,6 +60,7 @@ function setup(options: {
 		flushCustomSaveTimeout,
 		deleteCustomTask,
 		materializeRecurringTasks,
+		handleDragChange,
 	}
 }
 
@@ -439,6 +442,165 @@ describe('useTaskEditing', () => {
 
 			expect(deleteCustomTask).toHaveBeenCalledWith('custom_1', 't1')
 			expect(editingTask.value).toBeNull()
+		})
+	})
+
+	describe('moveEditingTask', () => {
+		it('moves a non-recurring task between days', () => {
+			const week = emptyWeek()
+			const task: Task = { id: 't1', title: 'Meeting', done: false, notes: '', recurrence: '', color: '' }
+			week.days.monday.push(task)
+			const {
+				openEdit, moveEditingTask, weekData, editingTask,
+				debouncedSave, debouncedSaveCustomColumns, materializeRecurringTasks,
+			} = setup({ weekOverride: week })
+
+			openEdit('monday', task)
+			moveEditingTask('sunday')
+
+			expect(weekData.value.days.monday).toHaveLength(0)
+			expect(weekData.value.days.sunday).toHaveLength(1)
+			expect(weekData.value.days.sunday[0].id).toBe('t1')
+			expect(editingTask.value).toBeNull()
+			expect(debouncedSave).toHaveBeenCalled()
+			expect(debouncedSaveCustomColumns).toHaveBeenCalled()
+			expect(materializeRecurringTasks).toHaveBeenCalled()
+		})
+
+		it('moves a task from a day to a custom column', () => {
+			const week = emptyWeek()
+			const task: Task = { id: 't1', title: 'Idea', done: false, notes: '', recurrence: '', color: '' }
+			week.days.tuesday.push(task)
+			const columns: CustomColumn[] = [{ id: 'custom_1', title: 'Someday', tasks: [] }]
+			const { openEdit, moveEditingTask, weekData, customColumns } = setup({ weekOverride: week, columns })
+
+			openEdit('tuesday', task)
+			moveEditingTask('custom_1')
+
+			expect(weekData.value.days.tuesday).toHaveLength(0)
+			expect(customColumns.value[0].tasks).toHaveLength(1)
+			expect(customColumns.value[0].tasks[0].id).toBe('t1')
+		})
+
+		it('moves a task from a custom column to a day', () => {
+			const week = emptyWeek()
+			const columns: CustomColumn[] = [{
+				id: 'custom_1',
+				title: 'Someday',
+				tasks: [{ id: 't1', title: 'Follow up', done: false, notes: '', recurrence: '', color: '' }],
+			}]
+			const { openEdit, moveEditingTask, weekData, customColumns } = setup({ weekOverride: week, columns })
+
+			openEdit('custom_1', columns[0].tasks[0])
+			moveEditingTask('thursday')
+
+			expect(customColumns.value[0].tasks).toHaveLength(0)
+			expect(weekData.value.days.thursday).toHaveLength(1)
+			expect(weekData.value.days.thursday[0].id).toBe('t1')
+		})
+
+		it('updates the recurring definition anchor when moving a recurring task day → day', () => {
+			const defId = 'def-1'
+			const week = emptyWeek()
+			const task: Task = {
+				id: 't1',
+				title: 'Standup',
+				done: false,
+				notes: '',
+				recurrence: 'weekly',
+				color: '',
+				recurringSourceId: defId,
+				recurringOriginalDate: '2026-03-16',
+			}
+			week.days.monday.push(task)
+			const defs: RecurringTaskDefinition[] = [{
+				id: defId,
+				title: 'Standup',
+				notes: '',
+				recurrence: 'weekly',
+				startDate: '2026-03-02',
+				endDate: '',
+				dayOfWeek: 0,
+				dayOfMonth: 2,
+				exceptionDates: ['2026-02-23'],
+			}]
+			const { openEdit, moveEditingTask, weekData, recurringTasks } = setup({
+				weekOverride: week, recurringDefs: defs,
+			})
+
+			openEdit('monday', task)
+			moveEditingTask('sunday')
+
+			// Week 12 of 2026 starts on Monday 2026-03-16, so Sunday is 2026-03-22
+			expect(recurringTasks.value[0].startDate).toBe('2026-03-22')
+			expect(recurringTasks.value[0].dayOfWeek).toBe(6)
+			expect(recurringTasks.value[0].dayOfMonth).toBe(22)
+			// Stale exception before new startDate is pruned
+			expect(recurringTasks.value[0].exceptionDates).toEqual([])
+			expect(weekData.value.days.monday).toHaveLength(0)
+			expect(weekData.value.days.sunday).toHaveLength(1)
+			expect(weekData.value.days.sunday[0].recurringOriginalDate).toBe('2026-03-22')
+		})
+
+		it('is a no-op when target equals source', () => {
+			const week = emptyWeek()
+			const task: Task = { id: 't1', title: 'Stay', done: false, notes: '', recurrence: '', color: '' }
+			week.days.monday.push(task)
+			const { openEdit, moveEditingTask, weekData, editingTask, debouncedSave } = setup({ weekOverride: week })
+
+			openEdit('monday', task)
+			moveEditingTask('monday')
+
+			expect(weekData.value.days.monday).toHaveLength(1)
+			expect(editingTask.value).toBeNull()
+			expect(debouncedSave).not.toHaveBeenCalled()
+		})
+
+		it('drops the moved recurring instance if the target day already has one for the same definition', () => {
+			const defId = 'def-1'
+			const week = emptyWeek()
+			const monTask: Task = {
+				id: 't1',
+				title: 'Daily',
+				done: false,
+				notes: '',
+				recurrence: 'daily',
+				color: '',
+				recurringSourceId: defId,
+				recurringOriginalDate: '2026-03-16',
+			}
+			const sunTask: Task = {
+				id: 't2',
+				title: 'Daily',
+				done: false,
+				notes: '',
+				recurrence: 'daily',
+				color: '',
+				recurringSourceId: defId,
+				recurringOriginalDate: '2026-03-22',
+			}
+			week.days.monday.push(monTask)
+			week.days.sunday.push(sunTask)
+			const defs: RecurringTaskDefinition[] = [{
+				id: defId,
+				title: 'Daily',
+				notes: '',
+				recurrence: 'daily',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 0,
+				dayOfMonth: 1,
+				exceptionDates: [],
+			}]
+			const { openEdit, moveEditingTask, weekData } = setup({ weekOverride: week, recurringDefs: defs })
+
+			openEdit('monday', monTask)
+			moveEditingTask('sunday')
+
+			expect(weekData.value.days.monday).toHaveLength(0)
+			// Sunday keeps the original instance (no duplication)
+			expect(weekData.value.days.sunday).toHaveLength(1)
+			expect(weekData.value.days.sunday[0].id).toBe('t2')
 		})
 	})
 })
