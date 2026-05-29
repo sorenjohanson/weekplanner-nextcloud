@@ -3,6 +3,7 @@ import type { Ref, ComputedRef } from 'vue'
 import type { Recurrence, TaskColor, Task, RecurringTaskDefinition, DayKey, WeekData, CustomColumn, RecurringDeleteMode } from '../types'
 import { ALL_KEYS } from '../types'
 import { getWeekDates, toDateStr } from '../utils/dateUtils'
+import { randomId } from '../utils/randomId'
 
 export interface TaskEditingDeps {
 	currentYear: Ref<number>
@@ -73,7 +74,7 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 
 		if (newRecurrence && !oldSourceId) {
 			// Setting recurrence for the first time: create a definition
-			const defId = crypto.randomUUID()
+			const defId = randomId()
 			const dateStr = getTaskDate(day)
 			const date = weekDates.value[ALL_KEYS.indexOf(day)]
 			recurringTasks.value.push({
@@ -235,7 +236,7 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 		const title = newTasks.value[day].trim()
 		if (!title) return
 		weekData.value.days[day].push({
-			id: crypto.randomUUID(),
+			id: randomId(),
 			title,
 			done: false,
 			notes: '',

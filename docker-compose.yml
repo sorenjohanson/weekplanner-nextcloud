@@ -15,9 +15,10 @@ services:
       - NEXTCLOUD_ADMIN_USER=admin
       - NEXTCLOUD_ADMIN_PASSWORD=admin
       - REDIS_HOST=redis
-      - NOTIFY_PUSH_BASE_URL=http://${HOST_IP}:7867
-      - NEXTCLOUD_TRUSTED_DOMAINS=localhost ${HOST_IP}
-      - OVERWRITEPROTOCOL=http
+      # Space-separated list of hostnames clients may use to reach Nextcloud.
+      # Set in .env when developing across devices (Tailscale, LAN, mDNS).
+      - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS:-localhost}
+      - OVERWRITEPROTOCOL=${OVERWRITEPROTOCOL:-http}
     depends_on:
       redis:
         condition: service_healthy
@@ -31,8 +32,9 @@ services:
     # Detect architecture at runtime so this works on both x86_64 and aarch64 (Apple Silicon).
     # Wait for the notify_push binary to appear (installed by the nextcloud container), then run it.
     user: www-data
-    ports:
-      - "7867:7867"
+    # No host port: clients reach notify_push through Apache's /push reverse proxy
+    # on the Nextcloud container, so the WebSocket is same-origin from the browser's
+    # point of view. See docker-entrypoint.sh for the proxy config.
     environment:
       - PORT=7867
       - NEXTCLOUD_URL=http://nextcloud

@@ -5,6 +5,7 @@ import { generateUrl } from '@nextcloud/router'
 import type { Task, CustomColumn, RecurringTaskDefinition } from '../types'
 import { normalizeTask } from '../utils/weekData'
 import { createDebouncedSave } from '../utils/debounce'
+import { randomId } from '../utils/randomId'
 
 export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>) {
 	const customColumns = ref<CustomColumn[]>([
@@ -73,7 +74,7 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 		const col = customColumns.value.find((c) => c.id === columnId)
 		if (!col) return
 		col.tasks.push({
-			id: crypto.randomUUID(),
+			id: randomId(),
 			title,
 			done: false,
 			notes: '',

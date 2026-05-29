@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref } from 'vue'
 import axios from '@nextcloud/axios'
+import { getCapabilities } from '@nextcloud/capabilities'
 import { listen } from '@nextcloud/notify_push'
 import { usePolling } from '../usePolling'
 import { emptyWeek } from '../../utils/weekData'
@@ -8,6 +9,10 @@ import type { WeekData } from '../../types'
 
 vi.mock('@nextcloud/notify_push', () => ({
 	listen: vi.fn().mockReturnValue(true),
+}))
+
+vi.mock('@nextcloud/capabilities', () => ({
+	getCapabilities: vi.fn(),
 }))
 
 vi.mock('@nextcloud/axios', () => ({
@@ -19,9 +24,36 @@ vi.mock('@nextcloud/router', () => ({
 }))
 const mockListen = vi.mocked(listen as (event: string, cb: (type: string, body: unknown) => void) => boolean)
 const mockGet = vi.mocked(axios.get)
+const mockGetCapabilities = vi.mocked(getCapabilities)
 
 const YEAR = 2026
 const WEEK = 12
+
+class FakeWebSocketSuccess {
+
+	onopen: (() => void) | null = null
+	onerror: (() => void) | null = null
+	onclose: (() => void) | null = null
+	constructor() {
+		queueMicrotask(() => this.onopen?.())
+	}
+
+	close() {}
+
+}
+
+class FakeWebSocketFailure {
+
+	onopen: (() => void) | null = null
+	onerror: (() => void) | null = null
+	onclose: (() => void) | null = null
+	constructor() {
+		queueMicrotask(() => this.onerror?.())
+	}
+
+	close() {}
+
+}
 
 function setup(overrides: {
 	isWeekSaveIdle?: () => boolean
@@ -63,8 +95,45 @@ function fireWeekUpdate(body: unknown) {
 }
 
 describe('usePolling', () => {
+	const originalWebSocket = globalThis.WebSocket
+
 	beforeEach(() => {
 		vi.clearAllMocks()
+		mockGetCapabilities.mockReturnValue({ notify_push: { endpoints: {} } })
+		globalThis.WebSocket = FakeWebSocketSuccess as unknown as typeof WebSocket
+	})
+
+	afterEach(() => {
+		globalThis.WebSocket = originalWebSocket
+	})
+
+	describe('trySetupNotifyPush', () => {
+		it('returns false when notify_push capability is absent', async () => {
+			mockGetCapabilities.mockReturnValue({})
+			const { polling } = setup()
+
+			await expect(polling.trySetupNotifyPush()).resolves.toBe(false)
+			expect(mockListen).not.toHaveBeenCalled()
+		})
+
+		it('returns false when the WebSocket probe fails', async () => {
+			globalThis.WebSocket = FakeWebSocketFailure as unknown as typeof WebSocket
+			const { polling } = setup()
+
+			await expect(polling.trySetupNotifyPush()).resolves.toBe(false)
+			expect(mockListen).not.toHaveBeenCalled()
+		})
+
+		it('rewrites the notify_push websocket to the page origin and leaves pre_auth alone', async () => {
+			const caps = { notify_push: { endpoints: { websocket: 'ws://hardcoded:7867/ws', pre_auth: 'http://nextcloud/index.php/apps/notify_push/preauth' } } }
+			mockGetCapabilities.mockReturnValue(caps)
+			const { polling } = setup()
+
+			await polling.trySetupNotifyPush()
+
+			expect(caps.notify_push.endpoints.websocket).toMatch(/^wss?:\/\/[^/]+\/push\/ws$/)
+			expect(caps.notify_push.endpoints.pre_auth).toBe('http://nextcloud/index.php/apps/notify_push/preauth')
+		})
 	})
 
 	describe('notify_push weekplanner_week_update', () => {

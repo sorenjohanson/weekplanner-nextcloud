@@ -2,6 +2,7 @@ import type { Ref } from 'vue'
 import type { WeekData, RecurringTaskDefinition, CustomColumn } from '../types'
 import { ALL_KEYS } from '../types'
 import { getWeekDates, toDateStr } from '../utils/dateUtils'
+import { randomId } from '../utils/randomId'
 
 export function useRecurringTasks(
 	currentYear: Ref<number>,
@@ -60,7 +61,7 @@ export function useRecurringTasks(
 				)
 				if (!alreadyExists) {
 					weekData.value.days[day].push({
-						id: crypto.randomUUID(),
+						id: randomId(),
 						title: def.title,
 						done: false,
 						notes: def.notes,

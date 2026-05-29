@@ -18,6 +18,29 @@ A Nextcloud app that gives you a weekly overview of your tasks. Plan your week b
 
 ## Development
 
+### Running locally across devices
+
+`docker-compose.yml` brings up Nextcloud, Redis and the `notify_push` sidecar.
+The `notify_push` WebSocket is reverse-proxied at `/push` on the same Apache
+that serves Nextcloud, so it works from any hostname you reach the container
+under without rebuilding.
+
+To access the dev instance from another device (Tailscale, LAN, mDNS) copy
+`.env.example` to `.env` and list every hostname clients will use:
+
+```bash
+cp .env.example .env
+# edit NEXTCLOUD_TRUSTED_DOMAINS, e.g.
+# NEXTCLOUD_TRUSTED_DOMAINS="localhost 192.168.1.42 macbook.tail-scale.ts.net"
+docker compose up -d
+```
+
+Pages load over plain HTTP by default (`OVERWRITEPROTOCOL=http`), which is
+what you want for Tailscale/LAN access without TLS. Build the JS in
+development mode (`pnpm run dev` or `pnpm run watch` for live rebuilds) —
+the production build assumes a secure context (HTTPS or localhost) and will
+throw if it doesn't get one.
+
 ### Pre-push hooks
 
 Local pre-push hooks run the test suite, linters, psalm and a debug-statement
