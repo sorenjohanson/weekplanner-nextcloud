@@ -305,9 +305,16 @@ onUnmounted(() => {
 .weekend-half {
 	display: flex;
 	flex-direction: column;
-	flex: 1;
+	/* Use auto basis so each half sizes to its content first and only shares
+	   extra space evenly. With `flex: 1` (basis 0) the halves split the parent
+	   50/50 regardless of content, so Saturday's tasks overflow behind Sunday
+	   once they exceed half the row height. The min-height keeps the lighter
+	   half (typically Sunday) at a baseline size when the other half's tasks
+	   push the column taller — without it Sunday would shrink to just the
+	   input field. ~half of the week-grid min-height of 240px. */
+	flex: 1 1 auto;
+	min-height: 120px;
 	background-color: var(--color-main-background);
-	min-height: 0;
 }
 
 .day-header {
