@@ -233,6 +233,7 @@ onMounted(() => {
 	border-radius: 12px;
 	width: 380px;
 	max-width: 90vw;
+	max-height: 90vh;
 	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
 	display: flex;
 	flex-direction: column;
@@ -273,7 +274,8 @@ onMounted(() => {
 
 .edit-dialog-body {
 	padding: 16px 20px;
-	overflow: hidden;
+	overflow-y: auto;
+	flex: 1;
 }
 
 .edit-label {
@@ -537,6 +539,7 @@ onMounted(() => {
 @media (max-width: 768px) {
 	.edit-dialog {
 		width: 95vw;
+		max-height: 95vh;
 	}
 }
 </style>
