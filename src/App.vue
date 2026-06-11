@@ -15,6 +15,11 @@ import { useRecurringTasks } from './composables/useRecurringTasks'
 import { useTaskEditing } from './composables/useTaskEditing'
 import { usePolling } from './composables/usePolling'
 import { useDragHandler } from './composables/useDragHandler'
+import { getISOWeek, getWeekMonday, getWeekDates } from './utils/dateUtils'
+import axios from '@nextcloud/axios'
+import { generateUrl } from '@nextcloud/router'
+import { normalizeWeekData } from './utils/weekData'
+import type { DayKey, Task } from './types'
 
 // --- Shared state ---
 const weekData = ref<WeekData>(emptyWeek())
@@ -39,9 +44,28 @@ const recurring = useRecurringTasks(
 	weekPersistence.debouncedSave, columns.customColumns,
 )
 
+// Stash a task into a future week's server-side data.
+// We do a GET for that week, append the task, then PUT it back.
+async function stashTaskForNextWeek(task: Task, targetDay: DayKey, year: number, week: number) {
+	try {
+		const url = generateUrl('/apps/weekplanner/week/{year}/{week}', {
+			year: String(year),
+			week: String(week),
+		})
+		const response = await axios.get(url)
+		const data = normalizeWeekData(response.data)
+		data.days[targetDay].push(task)
+		await axios.put(url, data)
+	} catch {
+		// If the fetch fails we fall back to a silent no-op.
+		// The user can navigate to the next week and add the task manually.
+	}
+}
+
 const {
 	editingTask, editingTaskIsRecurring, editTitle, editNotes, editRecurrence, editColor,
 	newTasks, openEdit, saveEdit, deleteEditingTask, addTask, toggleDone, moveEditingTask,
+	moveEditingTaskToNextWeek,
 } = useTaskEditing({
 	currentYear,
 	currentWeek,
@@ -58,6 +82,7 @@ const {
 	deleteCustomTask: columns.deleteCustomTask,
 	materializeRecurringTasks: recurring.materializeRecurringTasks,
 	handleDragChange: recurring.handleDragChange,
+	stashTaskForNextWeek,
 })
 
 const moveDayOptions = computed(() => ALL_KEYS.map((key) => ({
@@ -66,6 +91,20 @@ const moveDayOptions = computed(() => ALL_KEYS.map((key) => ({
 	date: formatDate(key),
 	isToday: isToday(key),
 })))
+
+const moveNextWeekDayOptions = computed(() => {
+	const monday = getWeekMonday(currentYear.value, currentWeek.value)
+	monday.setDate(monday.getDate() + 7)
+	const nextDates = getWeekDates(getISOWeek(monday).year, getISOWeek(monday).week)
+	return ALL_KEYS.map((key, idx) => {
+		const date = nextDates[idx]
+		return {
+			key,
+			label: DAY_LABELS[key],
+			date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+		}
+	})
+})
 
 const moveColumnOptions = computed(() => customColumns.value.map((c) => ({
 	id: c.id,
@@ -230,6 +269,7 @@ onUnmounted(() => {
 					:is-recurring="editingTaskIsRecurring"
 					:current-location="editingTask.day"
 					:move-day-options="moveDayOptions"
+					:move-next-week-day-options="moveNextWeekDayOptions"
 					:move-column-options="moveColumnOptions"
 					@update:title="editTitle = $event"
 					@update:notes="editNotes = $event"
@@ -237,7 +277,8 @@ onUnmounted(() => {
 					@update:color="editColor = $event"
 					@save="saveEdit"
 					@delete="deleteEditingTask($event)"
-					@move="moveEditingTask($event)" />
+					@move="moveEditingTask($event)"
+					@move-to-next-week="moveEditingTaskToNextWeek($event)" />
 			</div>
 		</NcAppContent>
 	</NcContent>

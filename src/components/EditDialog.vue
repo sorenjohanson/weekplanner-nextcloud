@@ -11,6 +11,12 @@ export interface MoveDayOption {
 	isToday: boolean
 }
 
+export interface MoveNextWeekDayOption {
+	key: DayKey
+	label: string
+	date: string
+}
+
 export interface MoveColumnOption {
 	id: string
 	title: string
@@ -24,6 +30,7 @@ defineProps<{
 	isRecurring: boolean
 	currentLocation: DayKey | string
 	moveDayOptions: MoveDayOption[]
+	moveNextWeekDayOptions: MoveNextWeekDayOption[]
 	moveColumnOptions: MoveColumnOption[]
 }>()
 
@@ -35,6 +42,7 @@ const emit = defineEmits<{
 	save: []
 	delete: [mode?: RecurringDeleteMode]
 	move: [target: DayKey | string]
+	moveToNextWeek: [targetDay: DayKey]
 }>()
 
 const titleInput = ref<HTMLInputElement | null>(null)
@@ -156,6 +164,18 @@ onMounted(() => {
 						:disabled="currentLocation === col.id"
 						@click="emit('move', col.id)">
 						{{ col.title || 'Untitled column' }}
+					</button>
+				</div>
+				<label class="edit-label edit-label-move edit-label-next-week">Next week</label>
+				<div class="edit-move-row">
+					<button
+						v-for="d in moveNextWeekDayOptions"
+						:key="d.key"
+						type="button"
+						class="edit-move-chip edit-move-chip-next-week"
+						:title="d.date"
+						@click="emit('moveToNextWeek', d.key)">
+						{{ d.label }}
 					</button>
 				</div>
 			</div>
@@ -389,6 +409,31 @@ onMounted(() => {
 	max-width: 160px;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.edit-label-next-week {
+	margin-top: 12px;
+	color: var(--color-text-maxcontrast);
+}
+
+.edit-move-chip-next-week {
+	flex: 0 1 auto;
+	padding: 4px 10px;
+	border: 1px dashed var(--color-border-dark);
+	border-radius: 999px;
+	background-color: var(--color-main-background);
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
+	font-family: inherit;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.edit-move-chip-next-week:hover {
+	border-color: var(--color-primary-element);
+	color: var(--color-primary-element);
+	border-style: solid;
 }
 
 .edit-dialog-footer {
