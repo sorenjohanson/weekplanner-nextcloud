@@ -260,6 +260,7 @@ onUnmounted(() => {
 					</div>
 				</div>
 
+				<Teleport to="body">
 				<EditDialog
 					v-if="editingTask"
 					:title="editTitle"
@@ -279,6 +280,7 @@ onUnmounted(() => {
 					@delete="deleteEditingTask($event)"
 					@move="moveEditingTask($event)"
 					@move-to-next-week="moveEditingTaskToNextWeek($event)" />
+				</Teleport>
 			</div>
 		</NcAppContent>
 	</NcContent>
