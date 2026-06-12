@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { ref } from 'vue'
-import axios from '@nextcloud/axios'
-import { useCustomColumns } from '../useCustomColumns'
 import type { RecurringTaskDefinition } from '../../types'
+
+import axios from '@nextcloud/axios'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
+import { useCustomColumns } from '../useCustomColumns'
 
 vi.mock('@nextcloud/axios', () => ({
 	default: {

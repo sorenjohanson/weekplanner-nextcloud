@@ -1,9 +1,10 @@
 import type { Ref } from 'vue'
+import type { WeekData } from '../types'
+
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
-import type { WeekData } from '../types'
-import { normalizeWeekData } from '../utils/weekData'
 import { createDebouncedSave } from '../utils/debounce'
+import { normalizeWeekData } from '../utils/weekData'
 
 export function useWeekPersistence(
 	currentYear: Ref<number>,
@@ -46,16 +47,16 @@ export function useWeekPersistence(
 				week: String(currentWeek.value),
 			})
 			const response = await axios.get(url, { signal: controller.signal })
-			if (controller.signal.aborted) return
-			if (!save.isIdle()) return
+			if (controller.signal.aborted) { return }
+			if (!save.isIdle()) { return }
 			weekData.value = normalizeWeekData(response.data)
 			if (typeof response.data?.updatedAt === 'number') {
 				knownWeekUpdatedAt = response.data.updatedAt
 			}
 		} catch {
-			if (controller.signal.aborted) return
+			if (controller.signal.aborted) { return }
 		} finally {
-			if (!controller.signal.aborted) isLoading = false
+			if (!controller.signal.aborted) { isLoading = false }
 		}
 		onLoaded()
 	}

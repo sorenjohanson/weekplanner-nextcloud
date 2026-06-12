@@ -1,15 +1,16 @@
 import type { Ref } from 'vue'
+import type { WeekData } from '../types'
+
 import axios from '@nextcloud/axios'
 import { getCapabilities } from '@nextcloud/capabilities'
 import { generateUrl } from '@nextcloud/router'
-import type { WeekData } from '../types'
 import { normalizeWeekData } from '../utils/weekData'
 
 interface PollDeps {
 	currentYear: Ref<number>
 	currentWeek: Ref<number>
 	weekData: Ref<WeekData>
-	editingTask: Ref<{ day: string; taskId: string } | null>
+	editingTask: Ref<{ day: string, taskId: string } | null>
 	loadWeek: () => Promise<void>
 	loadCustomColumns: () => Promise<void>
 	materializeRecurringTasks: () => void
@@ -24,7 +25,7 @@ interface PollDeps {
 }
 
 interface NotifyPushCapability {
-	endpoints?: { websocket?: string; pre_auth?: string }
+	endpoints?: { websocket?: string, pre_auth?: string }
 }
 
 const WS_PROBE_TIMEOUT_MS = 5_000
@@ -49,7 +50,7 @@ function rewriteNotifyPushWebsocket(): string | null {
 	} catch {
 		return null
 	}
-	if (!caps?.notify_push) return null
+	if (!caps?.notify_push) { return null }
 
 	const websocket = sameOriginWebSocketUrl()
 	caps.notify_push.endpoints = { ...(caps.notify_push.endpoints ?? {}), websocket }
@@ -61,7 +62,7 @@ function probeWebSocket(url: string, timeoutMs = WS_PROBE_TIMEOUT_MS): Promise<b
 		let settled = false
 		let socket: WebSocket | null = null
 		const finish = (ok: boolean) => {
-			if (settled) return
+			if (settled) { return }
 			settled = true
 			clearTimeout(timer)
 			try { socket?.close() } catch { /* ignore */ }
@@ -96,7 +97,7 @@ export function usePolling(deps: PollDeps) {
 	}
 
 	async function longPollWeek() {
-		if (!shouldPollWeek) return
+		if (!shouldPollWeek) { return }
 		const controller = new AbortController()
 		weekPollAbortController = controller
 		try {
@@ -104,7 +105,7 @@ export function usePolling(deps: PollDeps) {
 				year: String(deps.currentYear.value),
 				week: String(deps.currentWeek.value),
 			})
-			const response = await axios.get<{ changed: boolean; updatedAt: number; data?: unknown }>(
+			const response = await axios.get<{ changed: boolean, updatedAt: number, data?: unknown }>(
 				`${url}?since=${deps.getWeekKnownUpdatedAt()}`,
 				{ signal: controller.signal, timeout: 35_000 },
 			)
@@ -116,7 +117,7 @@ export function usePolling(deps: PollDeps) {
 				}
 			}
 		} catch {
-			if (controller.signal.aborted) return
+			if (controller.signal.aborted) { return }
 			await new Promise((resolve) => setTimeout(resolve, 5_000))
 		}
 		longPollWeek()
@@ -131,12 +132,12 @@ export function usePolling(deps: PollDeps) {
 	}
 
 	async function longPollCustom() {
-		if (!shouldPollCustom) return
+		if (!shouldPollCustom) { return }
 		const controller = new AbortController()
 		customPollAbortController = controller
 		try {
 			const url = generateUrl('/apps/weekplanner/custom-columns/poll')
-			const response = await axios.get<{ changed: boolean; updatedAt: number; data?: unknown }>(
+			const response = await axios.get<{ changed: boolean, updatedAt: number, data?: unknown }>(
 				`${url}?since=${deps.getCustomKnownUpdatedAt()}`,
 				{ signal: controller.signal, timeout: 35_000 },
 			)
@@ -147,7 +148,7 @@ export function usePolling(deps: PollDeps) {
 				}
 			}
 		} catch {
-			if (controller.signal.aborted) return
+			if (controller.signal.aborted) { return }
 			await new Promise((resolve) => setTimeout(resolve, 5_000))
 		}
 		longPollCustom()
@@ -172,18 +173,18 @@ export function usePolling(deps: PollDeps) {
 	async function trySetupNotifyPush(): Promise<boolean> {
 		try {
 			const wsUrl = rewriteNotifyPushWebsocket()
-			if (!wsUrl) return false
+			if (!wsUrl) { return false }
 
 			// `mod.listen()` returns truthy whenever the notify_push capability
 			// is advertised, not when the WebSocket actually connects. Without
 			// this probe a broken proxy or unreachable backend silently kills
 			// cross-device sync because the long-poll fallback never engages.
-			if (!(await probeWebSocket(wsUrl))) return false
+			if (!(await probeWebSocket(wsUrl))) { return false }
 
 			const mod = await import('@nextcloud/notify_push')
 
 			const available = mod.listen('weekplanner_week_update', (_type, body) => {
-				if (!body) return
+				if (!body) { return }
 				if (Number(body.year) === deps.currentYear.value && Number(body.week) === deps.currentWeek.value) {
 					if (deps.isWeekSaveIdle() && deps.isWeekLoadIdle() && !deps.editingTask.value) {
 						deps.loadWeek()

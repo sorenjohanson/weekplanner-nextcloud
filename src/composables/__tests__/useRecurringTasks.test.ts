@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { ref } from 'vue'
-import { useRecurringTasks } from '../useRecurringTasks'
-import { emptyWeek } from '../../utils/weekData'
 import type { RecurringTaskDefinition, WeekData } from '../../types'
+
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
+import { emptyWeek } from '../../utils/weekData'
+import { useRecurringTasks } from '../useRecurringTasks'
 
 // Week 12 of 2026: Monday Mar 16 - Sunday Mar 22
 const TEST_YEAR = 2026
@@ -15,7 +16,11 @@ function setup(defs: RecurringTaskDefinition[] = [], weekOverride?: WeekData) {
 	const recurringTasks = ref(defs)
 	const debouncedSave = vi.fn()
 	const { materializeRecurringTasks } = useRecurringTasks(
-		currentYear, currentWeek, weekData, recurringTasks, debouncedSave,
+		currentYear,
+		currentWeek,
+		weekData,
+		recurringTasks,
+		debouncedSave,
 	)
 	return { currentYear, currentWeek, weekData, recurringTasks, debouncedSave, materializeRecurringTasks }
 }

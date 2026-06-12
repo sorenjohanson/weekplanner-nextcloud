@@ -1,7 +1,8 @@
 import type { Task, WeekData } from '../types'
+
 import { ALL_KEYS } from '../types'
 
-export function normalizeTask(t: Partial<Task> & { id: string; title: string; done: boolean }): Task {
+export function normalizeTask(t: Partial<Task> & { id: string, title: string, done: boolean }): Task {
 	const task: Task = {
 		...t,
 		notes: t.notes || '',

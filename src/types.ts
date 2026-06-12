@@ -4,7 +4,7 @@ export type RecurringDeleteMode = 'this' | 'this-and-future' | 'all'
 
 export type TaskColor = '' | 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple'
 
-export const TASK_COLORS: { value: TaskColor; label: string; hex: string }[] = [
+export const TASK_COLORS: { value: TaskColor, label: string, hex: string }[] = [
 	{ value: 'red', label: 'Red', hex: '#FFD4D4' },
 	{ value: 'orange', label: 'Orange', hex: '#FFE4C8' },
 	{ value: 'yellow', label: 'Yellow', hex: '#FFF3C4' },

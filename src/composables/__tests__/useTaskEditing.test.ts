@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { ref, computed } from 'vue'
-import { useTaskEditing } from '../useTaskEditing'
-import { emptyWeek } from '../../utils/weekData'
+import type { CustomColumn, RecurringTaskDefinition, Task } from '../../types'
+
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { computed, ref } from 'vue'
 import { getWeekDates } from '../../utils/dateUtils'
-import type { RecurringTaskDefinition, CustomColumn, Task } from '../../types'
+import { emptyWeek } from '../../utils/weekData'
+import { useTaskEditing } from '../useTaskEditing'
 
 const TEST_YEAR = 2026
 const TEST_WEEK = 12
@@ -171,8 +172,13 @@ describe('useTaskEditing', () => {
 			const task: Task = { id: 't1', title: 'Standup', done: false, notes: '', recurrence: '', color: '' }
 			week.days.wednesday.push(task)
 			const {
-				openEdit, saveEdit, editRecurrence, recurringTasks,
-				weekData, debouncedSaveCustomColumns, materializeRecurringTasks,
+				openEdit,
+				saveEdit,
+				editRecurrence,
+				recurringTasks,
+				weekData,
+				debouncedSaveCustomColumns,
+				materializeRecurringTasks,
 			} = setup({ weekOverride: week })
 
 			openEdit('wednesday', task)
@@ -232,7 +238,8 @@ describe('useTaskEditing', () => {
 				exceptionDates: [],
 			}]
 			const { openEdit, saveEdit, editRecurrence, recurringTasks, weekData } = setup({
-				weekOverride: week, recurringDefs: defs,
+				weekOverride: week,
+				recurringDefs: defs,
 			})
 
 			openEdit('wednesday', task)
@@ -270,7 +277,8 @@ describe('useTaskEditing', () => {
 				exceptionDates: [],
 			}]
 			const { openEdit, saveEdit, editRecurrence, recurringTasks, materializeRecurringTasks } = setup({
-				weekOverride: week, recurringDefs: defs,
+				weekOverride: week,
+				recurringDefs: defs,
 			})
 
 			openEdit('wednesday', task)
@@ -307,7 +315,8 @@ describe('useTaskEditing', () => {
 				exceptionDates: [],
 			}]
 			const { openEdit, saveEdit, editTitle, editNotes, recurringTasks, debouncedSaveCustomColumns } = setup({
-				weekOverride: week, recurringDefs: defs,
+				weekOverride: week,
+				recurringDefs: defs,
 			})
 
 			openEdit('friday', task)
@@ -409,8 +418,14 @@ describe('useTaskEditing', () => {
 				exceptionDates: [],
 			}]
 			const {
-				openEdit, deleteEditingTask, weekData, recurringTasks,
-				flushSaveTimeout, flushCustomSaveTimeout, saveWeekNow, saveCustomColumnsNow,
+				openEdit,
+				deleteEditingTask,
+				weekData,
+				recurringTasks,
+				flushSaveTimeout,
+				flushCustomSaveTimeout,
+				saveWeekNow,
+				saveCustomColumnsNow,
 			} = setup({ weekOverride: week, recurringDefs: defs })
 
 			openEdit('wednesday', task)
@@ -453,8 +468,13 @@ describe('useTaskEditing', () => {
 			const task: Task = { id: 't1', title: 'Meeting', done: false, notes: '', recurrence: '', color: '' }
 			week.days.monday.push(task)
 			const {
-				openEdit, moveEditingTask, weekData, editingTask,
-				debouncedSave, debouncedSaveCustomColumns, materializeRecurringTasks,
+				openEdit,
+				moveEditingTask,
+				weekData,
+				editingTask,
+				debouncedSave,
+				debouncedSaveCustomColumns,
+				materializeRecurringTasks,
 			} = setup({ weekOverride: week })
 
 			openEdit('monday', task)
@@ -527,7 +547,8 @@ describe('useTaskEditing', () => {
 				exceptionDates: ['2026-02-23'],
 			}]
 			const { openEdit, moveEditingTask, weekData, recurringTasks } = setup({
-				weekOverride: week, recurringDefs: defs,
+				weekOverride: week,
+				recurringDefs: defs,
 			})
 
 			openEdit('monday', task)

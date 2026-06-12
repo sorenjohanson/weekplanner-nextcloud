@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref } from 'vue'
-import axios from '@nextcloud/axios'
-import { useWeekPersistence } from '../useWeekPersistence'
-import { emptyWeek } from '../../utils/weekData'
 import type { WeekData } from '../../types'
+
+import axios from '@nextcloud/axios'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
+import { emptyWeek } from '../../utils/weekData'
+import { useWeekPersistence } from '../useWeekPersistence'
 
 vi.mock('@nextcloud/axios', () => ({
 	default: { get: vi.fn(), put: vi.fn() },
@@ -86,7 +87,7 @@ describe('useWeekPersistence', () => {
 				const { loadWeek, debouncedSave, weekData } = setup(weekWithTask())
 
 				let resolveGet!: (val: unknown) => void
-				mockGet.mockReturnValue(new Promise(resolve => { resolveGet = resolve }))
+				mockGet.mockReturnValue(new Promise((resolve) => { resolveGet = resolve }))
 
 				const loadPromise = loadWeek()
 				debouncedSave() // sets saveTimeout before GET resolves
@@ -101,10 +102,10 @@ describe('useWeekPersistence', () => {
 			const { loadWeek, saveWeekNow, weekData } = setup(weekWithTask())
 
 			let resolveGet!: (val: unknown) => void
-			mockGet.mockReturnValue(new Promise(resolve => { resolveGet = resolve }))
+			mockGet.mockReturnValue(new Promise((resolve) => { resolveGet = resolve }))
 
 			let resolvePut!: (val: unknown) => void
-			mockPut.mockReturnValue(new Promise(resolve => { resolvePut = resolve }))
+			mockPut.mockReturnValue(new Promise((resolve) => { resolvePut = resolve }))
 
 			const savePromise = saveWeekNow() // isSaving = true
 			const loadPromise = loadWeek()
@@ -125,15 +126,11 @@ describe('useWeekPersistence', () => {
 			let resolveSecond!: (val: unknown) => void
 
 			mockGet
-				.mockImplementationOnce((_url, config) =>
-					new Promise((resolve, reject) => {
-						resolveFirst = resolve
-						config?.signal?.addEventListener?.('abort', () =>
-							reject(Object.assign(new Error('AbortError'), { name: 'AbortError' })),
-						)
-					}),
-				)
-				.mockImplementationOnce(() => new Promise(resolve => { resolveSecond = resolve }))
+				.mockImplementationOnce((_url, config) => new Promise((resolve, reject) => {
+					resolveFirst = resolve
+					config?.signal?.addEventListener?.('abort', () => reject(Object.assign(new Error('AbortError'), { name: 'AbortError' })))
+				}))
+				.mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve }))
 
 			const load1 = loadWeek()
 			const load2 = loadWeek() // aborts load1
@@ -160,7 +157,7 @@ describe('useWeekPersistence', () => {
 			const { loadWeek, isLoadIdle } = setup()
 
 			let resolveGet!: (val: unknown) => void
-			mockGet.mockReturnValue(new Promise(resolve => { resolveGet = resolve }))
+			mockGet.mockReturnValue(new Promise((resolve) => { resolveGet = resolve }))
 
 			const loadPromise = loadWeek()
 			expect(isLoadIdle()).toBe(false)
