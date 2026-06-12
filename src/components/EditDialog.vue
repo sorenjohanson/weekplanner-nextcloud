@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import type { DayKey, Recurrence, RecurringDeleteMode, TaskColor } from '../types'
+
+import { onMounted, ref } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
-import type { DayKey, Recurrence, TaskColor, RecurringDeleteMode } from '../types'
 import { TASK_COLORS } from '../types'
 
 export interface MoveDayOption {
@@ -183,7 +184,7 @@ onMounted(() => {
 				<button class="edit-delete-btn" @click="isRecurring ? handleDelete() : $emit('delete')">
 					Delete
 				</button>
-				<NcButton type="primary" @click="$emit('save')">
+				<NcButton variant="primary" @click="$emit('save')">
 					Save
 				</NcButton>
 			</div>

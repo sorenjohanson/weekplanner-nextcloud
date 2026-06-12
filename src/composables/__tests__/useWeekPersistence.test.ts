@@ -87,7 +87,9 @@ describe('useWeekPersistence', () => {
 				const { loadWeek, debouncedSave, weekData } = setup(weekWithTask())
 
 				let resolveGet!: (val: unknown) => void
-				mockGet.mockReturnValue(new Promise((resolve) => { resolveGet = resolve }))
+				mockGet.mockReturnValue(new Promise((resolve) => {
+					resolveGet = resolve
+				}))
 
 				const loadPromise = loadWeek()
 				debouncedSave() // sets saveTimeout before GET resolves
@@ -102,10 +104,14 @@ describe('useWeekPersistence', () => {
 			const { loadWeek, saveWeekNow, weekData } = setup(weekWithTask())
 
 			let resolveGet!: (val: unknown) => void
-			mockGet.mockReturnValue(new Promise((resolve) => { resolveGet = resolve }))
+			mockGet.mockReturnValue(new Promise((resolve) => {
+				resolveGet = resolve
+			}))
 
 			let resolvePut!: (val: unknown) => void
-			mockPut.mockReturnValue(new Promise((resolve) => { resolvePut = resolve }))
+			mockPut.mockReturnValue(new Promise((resolve) => {
+				resolvePut = resolve
+			}))
 
 			const savePromise = saveWeekNow() // isSaving = true
 			const loadPromise = loadWeek()
@@ -157,7 +163,9 @@ describe('useWeekPersistence', () => {
 			const { loadWeek, isLoadIdle } = setup()
 
 			let resolveGet!: (val: unknown) => void
-			mockGet.mockReturnValue(new Promise((resolve) => { resolveGet = resolve }))
+			mockGet.mockReturnValue(new Promise((resolve) => {
+				resolveGet = resolve
+			}))
 
 			const loadPromise = loadWeek()
 			expect(isLoadIdle()).toBe(false)

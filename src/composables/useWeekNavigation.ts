@@ -13,7 +13,9 @@ export function useWeekNavigation() {
 
 	const weekLabel = computed(() => {
 		const dates = weekDates.value
-		if (dates.length === 0) { return '' }
+		if (dates.length === 0) {
+			return ''
+		}
 		const mon = dates[0]
 		const sun = dates[6]
 		const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -27,7 +29,9 @@ export function useWeekNavigation() {
 
 	function isToday(day: DayKey): boolean {
 		const date = weekDates.value[dayIndex(day)]
-		if (!date) { return false }
+		if (!date) {
+			return false
+		}
 		const today = new Date()
 		return (
 			date.getFullYear() === today.getFullYear()
@@ -38,7 +42,9 @@ export function useWeekNavigation() {
 
 	function formatDate(day: DayKey): string {
 		const date = weekDates.value[dayIndex(day)]
-		if (!date) { return '' }
+		if (!date) {
+			return ''
+		}
 		return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 	}
 

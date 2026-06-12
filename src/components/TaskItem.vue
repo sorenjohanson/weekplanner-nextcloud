@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Task } from '../types'
+
 import { TASK_COLORS } from '../types'
 
 defineProps<{

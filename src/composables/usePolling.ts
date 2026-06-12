@@ -50,7 +50,9 @@ function rewriteNotifyPushWebsocket(): string | null {
 	} catch {
 		return null
 	}
-	if (!caps?.notify_push) { return null }
+	if (!caps?.notify_push) {
+		return null
+	}
 
 	const websocket = sameOriginWebSocketUrl()
 	caps.notify_push.endpoints = { ...(caps.notify_push.endpoints ?? {}), websocket }
@@ -61,14 +63,23 @@ function probeWebSocket(url: string, timeoutMs = WS_PROBE_TIMEOUT_MS): Promise<b
 	return new Promise((resolve) => {
 		let settled = false
 		let socket: WebSocket | null = null
+		const timerHolder: { id: ReturnType<typeof setTimeout> | null } = { id: null }
 		const finish = (ok: boolean) => {
-			if (settled) { return }
+			if (settled) {
+				return
+			}
 			settled = true
-			clearTimeout(timer)
-			try { socket?.close() } catch { /* ignore */ }
+			if (timerHolder.id !== null) {
+				clearTimeout(timerHolder.id)
+			}
+			try {
+				socket?.close()
+			} catch {
+				/* ignore */
+			}
 			resolve(ok)
 		}
-		const timer = setTimeout(() => finish(false), timeoutMs)
+		timerHolder.id = setTimeout(() => finish(false), timeoutMs)
 		try {
 			socket = new WebSocket(url)
 		} catch {
@@ -97,7 +108,9 @@ export function usePolling(deps: PollDeps) {
 	}
 
 	async function longPollWeek() {
-		if (!shouldPollWeek) { return }
+		if (!shouldPollWeek) {
+			return
+		}
 		const controller = new AbortController()
 		weekPollAbortController = controller
 		try {
@@ -109,7 +122,7 @@ export function usePolling(deps: PollDeps) {
 				`${url}?since=${deps.getWeekKnownUpdatedAt()}`,
 				{ signal: controller.signal, timeout: 35_000 },
 			)
-			if (response.data.changed && response.data.data != null) {
+			if (response.data.changed && response.data.data !== undefined && response.data.data !== null) {
 				if (deps.isWeekSaveIdle() && !deps.editingTask.value) {
 					deps.setWeekKnownUpdatedAt(response.data.updatedAt)
 					deps.weekData.value = normalizeWeekData(response.data.data)
@@ -117,7 +130,9 @@ export function usePolling(deps: PollDeps) {
 				}
 			}
 		} catch {
-			if (controller.signal.aborted) { return }
+			if (controller.signal.aborted) {
+				return
+			}
 			await new Promise((resolve) => setTimeout(resolve, 5_000))
 		}
 		longPollWeek()
@@ -132,7 +147,9 @@ export function usePolling(deps: PollDeps) {
 	}
 
 	async function longPollCustom() {
-		if (!shouldPollCustom) { return }
+		if (!shouldPollCustom) {
+			return
+		}
 		const controller = new AbortController()
 		customPollAbortController = controller
 		try {
@@ -148,7 +165,9 @@ export function usePolling(deps: PollDeps) {
 				}
 			}
 		} catch {
-			if (controller.signal.aborted) { return }
+			if (controller.signal.aborted) {
+				return
+			}
 			await new Promise((resolve) => setTimeout(resolve, 5_000))
 		}
 		longPollCustom()
@@ -173,18 +192,24 @@ export function usePolling(deps: PollDeps) {
 	async function trySetupNotifyPush(): Promise<boolean> {
 		try {
 			const wsUrl = rewriteNotifyPushWebsocket()
-			if (!wsUrl) { return false }
+			if (!wsUrl) {
+				return false
+			}
 
 			// `mod.listen()` returns truthy whenever the notify_push capability
 			// is advertised, not when the WebSocket actually connects. Without
 			// this probe a broken proxy or unreachable backend silently kills
 			// cross-device sync because the long-poll fallback never engages.
-			if (!(await probeWebSocket(wsUrl))) { return false }
+			if (!(await probeWebSocket(wsUrl))) {
+				return false
+			}
 
 			const mod = await import('@nextcloud/notify_push')
 
 			const available = mod.listen('weekplanner_week_update', (_type, body) => {
-				if (!body) { return }
+				if (!body) {
+					return
+				}
 				if (Number(body.year) === deps.currentYear.value && Number(body.week) === deps.currentWeek.value) {
 					if (deps.isWeekSaveIdle() && deps.isWeekLoadIdle() && !deps.editingTask.value) {
 						deps.loadWeek()
