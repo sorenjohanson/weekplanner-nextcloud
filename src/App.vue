@@ -3,11 +3,11 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import NcAppContent from '@nextcloud/vue/components/NcAppContent'
 import NcContent from '@nextcloud/vue/components/NcContent'
 import NcButton from '@nextcloud/vue/components/NcButton'
-import type { RecurringTaskDefinition, WeekData } from './types'
+import type { RecurringTaskDefinition, WeekData, DayKey, Task } from './types'
 import { WEEKDAY_KEYS, WEEKEND_KEYS, ALL_KEYS, DAY_LABELS } from './types'
 import TaskList from './components/TaskList.vue'
 import EditDialog from './components/EditDialog.vue'
-import { emptyWeek } from './utils/weekData'
+import { emptyWeek, normalizeWeekData } from './utils/weekData'
 import { useWeekNavigation } from './composables/useWeekNavigation'
 import { useWeekPersistence } from './composables/useWeekPersistence'
 import { useCustomColumns } from './composables/useCustomColumns'
@@ -15,6 +15,9 @@ import { useRecurringTasks } from './composables/useRecurringTasks'
 import { useTaskEditing } from './composables/useTaskEditing'
 import { usePolling } from './composables/usePolling'
 import { useDragHandler } from './composables/useDragHandler'
+import { getISOWeek, getWeekMonday, getWeekDates } from './utils/dateUtils'
+import axios from '@nextcloud/axios'
+import { generateUrl } from '@nextcloud/router'
 
 // --- Shared state ---
 const weekData = ref<WeekData>(emptyWeek())
@@ -39,9 +42,28 @@ const recurring = useRecurringTasks(
 	weekPersistence.debouncedSave, columns.customColumns,
 )
 
+// Stash a task into a future week's server-side data.
+// We do a GET for that week, append the task, then PUT it back.
+async function stashTaskForNextWeek(task: Task, targetDay: DayKey, year: number, week: number) {
+	try {
+		const url = generateUrl('/apps/weekplanner/week/{year}/{week}', {
+			year: String(year),
+			week: String(week),
+		})
+		const response = await axios.get(url)
+		const data = normalizeWeekData(response.data)
+		data.days[targetDay].push(task)
+		await axios.put(url, data)
+	} catch {
+		// If the fetch fails we fall back to a silent no-op.
+		// The user can navigate to the next week and add the task manually.
+	}
+}
+
 const {
 	editingTask, editingTaskIsRecurring, editTitle, editNotes, editRecurrence, editColor,
 	newTasks, openEdit, saveEdit, deleteEditingTask, addTask, toggleDone, moveEditingTask,
+	moveEditingTaskToNextWeek,
 } = useTaskEditing({
 	currentYear,
 	currentWeek,
@@ -58,6 +80,7 @@ const {
 	deleteCustomTask: columns.deleteCustomTask,
 	materializeRecurringTasks: recurring.materializeRecurringTasks,
 	handleDragChange: recurring.handleDragChange,
+	stashTaskForNextWeek,
 })
 
 const moveDayOptions = computed(() => ALL_KEYS.map((key) => ({
@@ -66,6 +89,20 @@ const moveDayOptions = computed(() => ALL_KEYS.map((key) => ({
 	date: formatDate(key),
 	isToday: isToday(key),
 })))
+
+const moveNextWeekDayOptions = computed(() => {
+	const monday = getWeekMonday(currentYear.value, currentWeek.value)
+	monday.setDate(monday.getDate() + 7)
+	const nextDates = getWeekDates(getISOWeek(monday).year, getISOWeek(monday).week)
+	return ALL_KEYS.map((key, idx) => {
+		const date = nextDates[idx]
+		return {
+			key,
+			label: DAY_LABELS[key],
+			date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+		}
+	})
+})
 
 const moveColumnOptions = computed(() => customColumns.value.map((c) => ({
 	id: c.id,
@@ -221,23 +258,27 @@ onUnmounted(() => {
 					</div>
 				</div>
 
-				<EditDialog
-					v-if="editingTask"
-					:title="editTitle"
-					:notes="editNotes"
-					:recurrence="editRecurrence"
-					:color="editColor"
-					:is-recurring="editingTaskIsRecurring"
-					:current-location="editingTask.day"
-					:move-day-options="moveDayOptions"
-					:move-column-options="moveColumnOptions"
-					@update:title="editTitle = $event"
-					@update:notes="editNotes = $event"
-					@update:recurrence="editRecurrence = $event"
-					@update:color="editColor = $event"
-					@save="saveEdit"
-					@delete="deleteEditingTask($event)"
-					@move="moveEditingTask($event)" />
+				<Teleport to="body">
+					<EditDialog
+						v-if="editingTask"
+						:title="editTitle"
+						:notes="editNotes"
+						:recurrence="editRecurrence"
+						:color="editColor"
+						:is-recurring="editingTaskIsRecurring"
+						:current-location="editingTask.day"
+						:move-day-options="moveDayOptions"
+						:move-next-week-day-options="moveNextWeekDayOptions"
+						:move-column-options="moveColumnOptions"
+						@update:title="editTitle = $event"
+						@update:notes="editNotes = $event"
+						@update:recurrence="editRecurrence = $event"
+						@update:color="editColor = $event"
+						@save="saveEdit"
+						@delete="deleteEditingTask($event)"
+						@move="moveEditingTask($event)"
+						@move-to-next-week="moveEditingTaskToNextWeek($event)" />
+				</Teleport>
 			</div>
 		</NcAppContent>
 	</NcContent>

@@ -31,6 +31,7 @@
     "@nextcloud/vite-config": "^2.5.2",
     "@vue/test-utils": "^2.4.11",
     "@vue/tsconfig": "^0.9.1",
+    "eslint": "^8.57.1",
     "happy-dom": "^20.10.2",
     "typescript": "^5.9.3",
     "vite": "^7.2.7",

@@ -2,7 +2,7 @@ import { ref, computed, nextTick } from 'vue'
 import type { Ref, ComputedRef } from 'vue'
 import type { Recurrence, TaskColor, Task, RecurringTaskDefinition, DayKey, WeekData, CustomColumn, RecurringDeleteMode } from '../types'
 import { ALL_KEYS } from '../types'
-import { getWeekDates, toDateStr } from '../utils/dateUtils'
+import { getWeekDates, toDateStr, getISOWeek, getWeekMonday } from '../utils/dateUtils'
 import { randomId } from '../utils/randomId'
 
 export interface TaskEditingDeps {
@@ -21,6 +21,7 @@ export interface TaskEditingDeps {
 	deleteCustomTask: (columnId: string, taskId: string) => void
 	materializeRecurringTasks: () => void
 	handleDragChange: () => boolean
+	stashTaskForNextWeek: (task: Task, targetDay: DayKey, year: number, week: number) => void
 }
 
 export function useTaskEditing(deps: TaskEditingDeps) {
@@ -343,6 +344,57 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 		return !!task?.recurringSourceId
 	})
 
+	// Move the currently edited task to a given day in the following week.
+	// The task is removed from the current day/column, then injected into the
+	// next week's week-data via a temporary year+week offset.  Because
+	// weekData only holds the currently-visible week, we delegate persistence
+	// to saveWeekNow/loadWeek-cycle: we save the current week first (task
+	// removed), then navigate the caller to the next week so the normal
+	// loadWeek picks up a fresh slice — except we can't navigate from here.
+	// Instead we adopt the simpler and equally correct approach: stash the
+	// task in localStorage under the target week key so it will be merged in
+	// on the next load.  For non-recurring tasks this is the cleanest option
+	// with zero coupling to the navigation layer.
+	//
+	// Implementation: we emit the task + target info upward via a callback
+	// injected through deps so App.vue stays in control of cross-week storage.
+	function moveEditingTaskToNextWeek(targetDay: DayKey) {
+		if (!editingTask.value) return
+		const { day: sourceDay, taskId } = editingTask.value
+
+		// Extract the task from its current location
+		let task: import('../types').Task | undefined
+		if (isCustomColumn(sourceDay)) {
+			const col = customColumns.value.find((c) => c.id === sourceDay)
+			if (col) {
+				const idx = col.tasks.findIndex((t) => t.id === taskId)
+				if (idx !== -1) task = col.tasks.splice(idx, 1)[0]
+			}
+		} else {
+			const arr = weekData.value.days[sourceDay as DayKey]
+			const idx = arr.findIndex((t) => t.id === taskId)
+			if (idx !== -1) task = arr.splice(idx, 1)[0]
+		}
+		if (!task) {
+			editingTask.value = null
+			return
+		}
+
+		// Persist the current week without the moved task
+		flushSaveTimeout()
+		saveWeekNow()
+
+		// Compute target week (current week + 7 days from Monday)
+		const monday = getWeekMonday(currentYear.value, currentWeek.value)
+		monday.setDate(monday.getDate() + 7)
+		const { year: nextYear, week: nextWeek } = getISOWeek(monday)
+
+		// Delegate cross-week stashing to the injected callback
+		deps.stashTaskForNextWeek(task, targetDay, nextYear, nextWeek)
+
+		editingTask.value = null
+	}
+
 	return {
 		editingTask,
 		editingTaskIsRecurring,
@@ -358,5 +410,6 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 		addTask,
 		toggleDone,
 		moveEditingTask,
+		moveEditingTaskToNextWeek,
 	}
 }

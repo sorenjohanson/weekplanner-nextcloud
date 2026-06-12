@@ -28,6 +28,7 @@ function setup(options: {
 	const deleteCustomTask = vi.fn()
 	const materializeRecurringTasks = vi.fn()
 	const handleDragChange = vi.fn(() => false)
+	const stashTaskForNextWeek = vi.fn()
 
 	const editing = useTaskEditing({
 		currentYear,
@@ -45,6 +46,7 @@ function setup(options: {
 		deleteCustomTask,
 		materializeRecurringTasks,
 		handleDragChange,
+		stashTaskForNextWeek,
 	})
 
 	return {
