@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { getISOWeek, getWeekMonday, getWeekDates, toDateStr } from '../dateUtils'
+import { describe, expect, it } from 'vitest'
+import { getISOWeek, getWeekDates, getWeekMonday, toDateStr } from '../dateUtils'
 
 describe('getISOWeek', () => {
 	it('returns correct week for a mid-year date', () => {

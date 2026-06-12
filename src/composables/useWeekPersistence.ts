@@ -1,9 +1,10 @@
 import type { Ref } from 'vue'
+import type { WeekData } from '../types'
+
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
-import type { WeekData } from '../types'
-import { normalizeWeekData } from '../utils/weekData'
 import { createDebouncedSave } from '../utils/debounce'
+import { normalizeWeekData } from '../utils/weekData'
 
 export function useWeekPersistence(
 	currentYear: Ref<number>,
@@ -14,9 +15,12 @@ export function useWeekPersistence(
 	let isLoading = false
 	let knownWeekUpdatedAt = 0
 	let loadAbortController: AbortController | null = null
+	let setSaveInProgress: (val: boolean) => void = () => {
+		/* assigned after save is created */
+	}
 
 	async function saveWeekNow() {
-		save.setInProgress(true)
+		setSaveInProgress(true)
 		try {
 			const url = generateUrl('/apps/weekplanner/week/{year}/{week}', {
 				year: String(currentYear.value),
@@ -29,11 +33,12 @@ export function useWeekPersistence(
 		} catch {
 			// Save failed silently
 		} finally {
-			save.setInProgress(false)
+			setSaveInProgress(false)
 		}
 	}
 
 	const save = createDebouncedSave(saveWeekNow)
+	setSaveInProgress = save.setInProgress
 
 	async function loadWeek() {
 		loadAbortController?.abort()
@@ -46,16 +51,24 @@ export function useWeekPersistence(
 				week: String(currentWeek.value),
 			})
 			const response = await axios.get(url, { signal: controller.signal })
-			if (controller.signal.aborted) return
-			if (!save.isIdle()) return
+			if (controller.signal.aborted) {
+				return
+			}
+			if (!save.isIdle()) {
+				return
+			}
 			weekData.value = normalizeWeekData(response.data)
 			if (typeof response.data?.updatedAt === 'number') {
 				knownWeekUpdatedAt = response.data.updatedAt
 			}
 		} catch {
-			if (controller.signal.aborted) return
+			if (controller.signal.aborted) {
+				return
+			}
 		} finally {
-			if (!controller.signal.aborted) isLoading = false
+			if (!controller.signal.aborted) {
+				isLoading = false
+			}
 		}
 		onLoaded()
 	}
@@ -66,7 +79,9 @@ export function useWeekPersistence(
 		debouncedSave: save.trigger,
 		flushSaveTimeout: save.flush,
 		getKnownUpdatedAt: () => knownWeekUpdatedAt,
-		setKnownUpdatedAt: (val: number) => { knownWeekUpdatedAt = val },
+		setKnownUpdatedAt: (val: number) => {
+			knownWeekUpdatedAt = val
+		},
 		isSaveIdle: save.isIdle,
 		isLoadIdle: () => !isLoading,
 	}

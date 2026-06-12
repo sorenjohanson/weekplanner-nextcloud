@@ -1,5 +1,6 @@
 import type { Ref } from 'vue'
-import type { WeekData, RecurringTaskDefinition, CustomColumn } from '../types'
+import type { CustomColumn, RecurringTaskDefinition, WeekData } from '../types'
+
 import { ALL_KEYS } from '../types'
 import { getWeekDates, toDateStr } from '../utils/dateUtils'
 import { randomId } from '../utils/randomId'
@@ -22,20 +23,34 @@ export function useRecurringTasks(
 			const dateStr = toDateStr(dates[i])
 			const before = weekData.value.days[day].length
 			weekData.value.days[day] = weekData.value.days[day].filter((t) => {
-				if (!t.recurringSourceId) return true
+				if (!t.recurringSourceId) {
+					return true
+				}
 				const def = recurringTasks.value.find((d) => d.id === t.recurringSourceId)
-				if (!def) return false
-				if (def.endDate && dateStr > def.endDate) return false
+				if (!def) {
+					return false
+				}
+				if (def.endDate && dateStr > def.endDate) {
+					return false
+				}
 				// If this instance was intentionally moved here by the user, keep it
 				const wasMovedHere = t.recurringOriginalDate && t.recurringOriginalDate !== dateStr
 				// Remove instances that no longer match the current recurrence pattern
 				// (e.g. after changing from weekly to monthly) — but not moved instances
-				if (!wasMovedHere && def.recurrence === 'weekly' && i !== def.dayOfWeek) return false
-				if (!wasMovedHere && def.recurrence === 'monthly' && dates[i].getDate() !== def.dayOfMonth) return false
-				if (!wasMovedHere && def.exceptionDates?.includes(dateStr)) return false
+				if (!wasMovedHere && def.recurrence === 'weekly' && i !== def.dayOfWeek) {
+					return false
+				}
+				if (!wasMovedHere && def.recurrence === 'monthly' && dates[i].getDate() !== def.dayOfMonth) {
+					return false
+				}
+				if (!wasMovedHere && def.exceptionDates?.includes(dateStr)) {
+					return false
+				}
 				return true
 			})
-			if (weekData.value.days[day].length !== before) changed = true
+			if (weekData.value.days[day].length !== before) {
+				changed = true
+			}
 		}
 
 		// Materialize new instances
@@ -44,8 +59,12 @@ export function useRecurringTasks(
 			const date = dates[i]
 			const dateStr = toDateStr(date)
 			for (const def of recurringTasks.value) {
-				if (dateStr < def.startDate) continue
-				if (def.endDate && dateStr > def.endDate) continue
+				if (dateStr < def.startDate) {
+					continue
+				}
+				if (def.endDate && dateStr > def.endDate) {
+					continue
+				}
 				let matches = false
 				if (def.recurrence === 'daily') {
 					matches = true
@@ -54,11 +73,13 @@ export function useRecurringTasks(
 				} else if (def.recurrence === 'monthly') {
 					matches = date.getDate() === def.dayOfMonth
 				}
-				if (!matches) continue
-				if (def.exceptionDates?.includes(dateStr)) continue
-				const alreadyExists = weekData.value.days[day].some(
-					(t) => t.recurringSourceId === def.id,
-				)
+				if (!matches) {
+					continue
+				}
+				if (def.exceptionDates?.includes(dateStr)) {
+					continue
+				}
+				const alreadyExists = weekData.value.days[day].some((t) => t.recurringSourceId === def.id)
 				if (!alreadyExists) {
 					weekData.value.days[day].push({
 						id: randomId(),
@@ -87,16 +108,24 @@ export function useRecurringTasks(
 		if (customColumns) {
 			for (const col of customColumns.value) {
 				for (const task of col.tasks) {
-					if (!task.recurringSourceId) continue
+					if (!task.recurringSourceId) {
+						continue
+					}
 					const def = recurringTasks.value.find((d) => d.id === task.recurringSourceId)
-					if (!def) continue
+					if (!def) {
+						continue
+					}
 					if (!task.recurringOriginalDate) {
 						for (let i = 0; i < ALL_KEYS.length; i++) {
 							const ds = toDateStr(dates[i])
 							let matches = false
-							if (def.recurrence === 'daily') matches = true
-							else if (def.recurrence === 'weekly') matches = i === def.dayOfWeek
-							else if (def.recurrence === 'monthly') matches = dates[i].getDate() === def.dayOfMonth
+							if (def.recurrence === 'daily') {
+								matches = true
+							} else if (def.recurrence === 'weekly') {
+								matches = i === def.dayOfWeek
+							} else if (def.recurrence === 'monthly') {
+								matches = dates[i].getDate() === def.dayOfMonth
+							}
 							if (matches && ds >= def.startDate && (!def.endDate || ds <= def.endDate)) {
 								task.recurringOriginalDate = ds
 								break
@@ -116,9 +145,13 @@ export function useRecurringTasks(
 			const day = ALL_KEYS[i]
 			const dateStr = toDateStr(dates[i])
 			for (const task of weekData.value.days[day]) {
-				if (!task.recurringSourceId) continue
+				if (!task.recurringSourceId) {
+					continue
+				}
 				const def = recurringTasks.value.find((d) => d.id === task.recurringSourceId)
-				if (!def) continue
+				if (!def) {
+					continue
+				}
 				if (!task.recurringOriginalDate) {
 					task.recurringOriginalDate = dateStr
 				}

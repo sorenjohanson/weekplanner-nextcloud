@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { emptyWeek, normalizeTask, normalizeWeekData } from '../weekData'
 
 describe('emptyWeek', () => {
@@ -21,7 +21,6 @@ describe('emptyWeek', () => {
 
 describe('normalizeTask', () => {
 	it('fills in missing optional fields with defaults', () => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const task = normalizeTask({ id: '1', title: 'Test', done: false } as any)
 		expect(task.notes).toBe('')
 		expect(task.recurrence).toBe('')
@@ -88,7 +87,7 @@ describe('normalizeWeekData', () => {
 		}
 		const result = normalizeWeekData(input)
 		expect(result.days.monday).toEqual([])
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 		expect((result.days as any).fakeday).toBeUndefined()
 	})
 })

@@ -1,11 +1,12 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref } from 'vue'
+import type { WeekData } from '../../types'
+
 import axios from '@nextcloud/axios'
 import { getCapabilities } from '@nextcloud/capabilities'
 import { listen } from '@nextcloud/notify_push'
-import { usePolling } from '../usePolling'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
 import { emptyWeek } from '../../utils/weekData'
-import type { WeekData } from '../../types'
+import { usePolling } from '../usePolling'
 
 vi.mock('@nextcloud/notify_push', () => ({
 	listen: vi.fn().mockReturnValue(true),
@@ -30,7 +31,6 @@ const YEAR = 2026
 const WEEK = 12
 
 class FakeWebSocketSuccess {
-
 	onopen: (() => void) | null = null
 	onerror: (() => void) | null = null
 	onclose: (() => void) | null = null
@@ -39,11 +39,9 @@ class FakeWebSocketSuccess {
 	}
 
 	close() {}
-
 }
 
 class FakeWebSocketFailure {
-
 	onopen: (() => void) | null = null
 	onerror: (() => void) | null = null
 	onclose: (() => void) | null = null
@@ -52,14 +50,13 @@ class FakeWebSocketFailure {
 	}
 
 	close() {}
-
 }
 
 function setup(overrides: {
 	isWeekSaveIdle?: () => boolean
 	isWeekLoadIdle?: () => boolean
 	isCustomSaveIdle?: () => boolean
-	editingTask?: { day: string; taskId: string } | null
+	editingTask?: { day: string, taskId: string } | null
 } = {}) {
 	const loadWeek = vi.fn().mockResolvedValue(undefined)
 	const loadCustomColumns = vi.fn().mockResolvedValue(undefined)
@@ -242,7 +239,7 @@ describe('usePolling', () => {
 
 			let resolveGet!: (val: unknown) => void
 			mockGet
-				.mockImplementationOnce(() => new Promise(resolve => { resolveGet = resolve }))
+				.mockImplementationOnce(() => new Promise((resolve) => { resolveGet = resolve }))
 				.mockReturnValue(new Promise(() => {})) // subsequent calls never resolve
 
 			polling.startLongPolling()

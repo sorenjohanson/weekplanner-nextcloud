@@ -1,46 +1,70 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import NcAppContent from '@nextcloud/vue/components/NcAppContent'
-import NcContent from '@nextcloud/vue/components/NcContent'
-import NcButton from '@nextcloud/vue/components/NcButton'
-import type { RecurringTaskDefinition, WeekData, DayKey, Task } from './types'
-import { WEEKDAY_KEYS, WEEKEND_KEYS, ALL_KEYS, DAY_LABELS } from './types'
-import TaskList from './components/TaskList.vue'
-import EditDialog from './components/EditDialog.vue'
-import { emptyWeek, normalizeWeekData } from './utils/weekData'
-import { useWeekNavigation } from './composables/useWeekNavigation'
-import { useWeekPersistence } from './composables/useWeekPersistence'
-import { useCustomColumns } from './composables/useCustomColumns'
-import { useRecurringTasks } from './composables/useRecurringTasks'
-import { useTaskEditing } from './composables/useTaskEditing'
-import { usePolling } from './composables/usePolling'
-import { useDragHandler } from './composables/useDragHandler'
-import { getISOWeek, getWeekMonday, getWeekDates } from './utils/dateUtils'
+import type { DayKey, RecurringTaskDefinition, Task, WeekData } from './types'
+
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import NcAppContent from '@nextcloud/vue/components/NcAppContent'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcContent from '@nextcloud/vue/components/NcContent'
+import EditDialog from './components/EditDialog.vue'
+import TaskList from './components/TaskList.vue'
+import { useCustomColumns } from './composables/useCustomColumns'
+import { useDragHandler } from './composables/useDragHandler'
+import { usePolling } from './composables/usePolling'
+import { useRecurringTasks } from './composables/useRecurringTasks'
+import { useTaskEditing } from './composables/useTaskEditing'
+import { useWeekNavigation } from './composables/useWeekNavigation'
+import { useWeekPersistence } from './composables/useWeekPersistence'
+import { ALL_KEYS, DAY_LABELS, WEEKDAY_KEYS, WEEKEND_KEYS } from './types'
+import { getISOWeek, getWeekDates, getWeekMonday } from './utils/dateUtils'
+import { emptyWeek, normalizeWeekData } from './utils/weekData'
 
 // --- Shared state ---
 const weekData = ref<WeekData>(emptyWeek())
 const recurringTasks = ref<RecurringTaskDefinition[]>([])
+let initialLoadDone = false
+let onWeekLoaded = () => {
+	/* assigned after recurring is created */
+}
 
 // --- Composables ---
 const {
-	currentYear, currentWeek, weekDates, weekLabel,
-	isToday, formatDate, prevWeek, nextWeek, goToday,
+	currentYear,
+	currentWeek,
+	weekDates,
+	weekLabel,
+	isToday,
+	formatDate,
+	prevWeek,
+	nextWeek,
+	goToday,
 } = useWeekNavigation()
 
 const weekPersistence = useWeekPersistence(
-	currentYear, currentWeek, weekData,
-	() => { if (initialLoadDone) recurring.materializeRecurringTasks() },
+	currentYear,
+	currentWeek,
+	weekData,
+	() => onWeekLoaded(),
 )
 
 const columns = useCustomColumns(recurringTasks)
 const { customColumns, newCustomTasks, addCustomTask, toggleCustomDone, updateColumnTitle } = columns
 
 const recurring = useRecurringTasks(
-	currentYear, currentWeek, weekData, recurringTasks,
-	weekPersistence.debouncedSave, columns.customColumns,
+	currentYear,
+	currentWeek,
+	weekData,
+	recurringTasks,
+	weekPersistence.debouncedSave,
+	columns.customColumns,
 )
+
+onWeekLoaded = () => {
+	if (initialLoadDone) {
+		recurring.materializeRecurringTasks()
+	}
+}
 
 // Stash a task into a future week's server-side data.
 // We do a GET for that week, append the task, then PUT it back.
@@ -61,8 +85,19 @@ async function stashTaskForNextWeek(task: Task, targetDay: DayKey, year: number,
 }
 
 const {
-	editingTask, editingTaskIsRecurring, editTitle, editNotes, editRecurrence, editColor,
-	newTasks, openEdit, saveEdit, deleteEditingTask, addTask, toggleDone, moveEditingTask,
+	editingTask,
+	editingTaskIsRecurring,
+	editTitle,
+	editNotes,
+	editRecurrence,
+	editColor,
+	newTasks,
+	openEdit,
+	saveEdit,
+	deleteEditingTask,
+	addTask,
+	toggleDone,
+	moveEditingTask,
 	moveEditingTaskToNextWeek,
 } = useTaskEditing({
 	currentYear,
@@ -139,7 +174,6 @@ const { onDragChange } = useDragHandler({
 
 // --- Lifecycle ---
 let mounted = false
-let initialLoadDone = false
 
 watch([currentYear, currentWeek], async () => {
 	if (!polling.isUsingNotifyPush()) {
@@ -171,18 +205,18 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<NcContent app-name="weekplanner">
+	<NcContent appName="weekplanner">
 		<NcAppContent>
 			<div class="weekplanner">
 				<div class="weekplanner-header">
 					<div class="weekplanner-nav">
-						<NcButton type="tertiary" @click="prevWeek">
+						<NcButton variant="tertiary" @click="prevWeek">
 							&larr; Prev
 						</NcButton>
-						<NcButton type="secondary" @click="goToday">
+						<NcButton variant="secondary" @click="goToday">
 							Today
 						</NcButton>
-						<NcButton type="tertiary" @click="nextWeek">
+						<NcButton variant="tertiary" @click="nextWeek">
 							Next &rarr;
 						</NcButton>
 					</div>
@@ -202,13 +236,13 @@ onUnmounted(() => {
 						</div>
 						<TaskList
 							:tasks="weekData.days[day]"
-							:new-task-text="newTasks[day]"
+							:newTaskText="newTasks[day]"
 							@update:tasks="weekData.days[day] = $event"
-							@update:new-task-text="newTasks[day] = $event"
+							@update:newTaskText="newTasks[day] = $event"
 							@change="onDragChange"
 							@edit="openEdit(day, $event)"
-							@toggle-done="toggleDone(day, $event)"
-							@add-task="addTask(day)" />
+							@toggleDone="toggleDone(day, $event)"
+							@addTask="addTask(day)" />
 					</div>
 
 					<div class="weekend-column">
@@ -222,13 +256,13 @@ onUnmounted(() => {
 							</div>
 							<TaskList
 								:tasks="weekData.days[day]"
-								:new-task-text="newTasks[day]"
+								:newTaskText="newTasks[day]"
 								@update:tasks="weekData.days[day] = $event"
-								@update:new-task-text="newTasks[day] = $event"
+								@update:newTaskText="newTasks[day] = $event"
 								@change="onDragChange"
 								@edit="openEdit(day, $event)"
-								@toggle-done="toggleDone(day, $event)"
-								@add-task="addTask(day)" />
+								@toggleDone="toggleDone(day, $event)"
+								@addTask="addTask(day)" />
 						</div>
 					</div>
 				</div>
@@ -248,13 +282,13 @@ onUnmounted(() => {
 						</div>
 						<TaskList
 							:tasks="col.tasks"
-							:new-task-text="newCustomTasks[col.id]"
+							:newTaskText="newCustomTasks[col.id]"
 							@update:tasks="col.tasks = $event"
-							@update:new-task-text="newCustomTasks[col.id] = $event"
+							@update:newTaskText="newCustomTasks[col.id] = $event"
 							@change="onDragChange"
 							@edit="openEdit(col.id, $event)"
-							@toggle-done="toggleCustomDone(col.id, $event)"
-							@add-task="addCustomTask(col.id)" />
+							@toggleDone="toggleCustomDone(col.id, $event)"
+							@addTask="addCustomTask(col.id)" />
 					</div>
 				</div>
 
@@ -265,11 +299,11 @@ onUnmounted(() => {
 						:notes="editNotes"
 						:recurrence="editRecurrence"
 						:color="editColor"
-						:is-recurring="editingTaskIsRecurring"
-						:current-location="editingTask.day"
-						:move-day-options="moveDayOptions"
-						:move-next-week-day-options="moveNextWeekDayOptions"
-						:move-column-options="moveColumnOptions"
+						:isRecurring="editingTaskIsRecurring"
+						:currentLocation="editingTask.day"
+						:moveDayOptions="moveDayOptions"
+						:moveNextWeekDayOptions="moveNextWeekDayOptions"
+						:moveColumnOptions="moveColumnOptions"
 						@update:title="editTitle = $event"
 						@update:notes="editNotes = $event"
 						@update:recurrence="editRecurrence = $event"
@@ -277,7 +311,7 @@ onUnmounted(() => {
 						@save="saveEdit"
 						@delete="deleteEditingTask($event)"
 						@move="moveEditingTask($event)"
-						@move-to-next-week="moveEditingTaskToNextWeek($event)" />
+						@moveToNextWeek="moveEditingTaskToNextWeek($event)" />
 				</Teleport>
 			</div>
 		</NcAppContent>

@@ -1,11 +1,12 @@
-import { ref } from 'vue'
 import type { Ref } from 'vue'
+import type { CustomColumn, RecurringTaskDefinition, Task } from '../types'
+
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
-import type { Task, CustomColumn, RecurringTaskDefinition } from '../types'
-import { normalizeTask } from '../utils/weekData'
+import { ref } from 'vue'
 import { createDebouncedSave } from '../utils/debounce'
 import { randomId } from '../utils/randomId'
+import { normalizeTask } from '../utils/weekData'
 
 export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>) {
 	const customColumns = ref<CustomColumn[]>([
@@ -20,9 +21,12 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 	})
 
 	let knownCustomUpdatedAt = 0
+	let setSaveInProgress: (val: boolean) => void = () => {
+		/* assigned after save is created */
+	}
 
 	async function saveCustomColumnsNow() {
-		save.setInProgress(true)
+		setSaveInProgress(true)
 		try {
 			const url = generateUrl('/apps/weekplanner/custom-columns')
 			const response = await axios.put(url, { columns: customColumns.value, recurringTasks: recurringTasks.value })
@@ -32,11 +36,12 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 		} catch {
 			// Save failed silently
 		} finally {
-			save.setInProgress(false)
+			setSaveInProgress(false)
 		}
 	}
 
 	const save = createDebouncedSave(saveCustomColumnsNow)
+	setSaveInProgress = save.setInProgress
 
 	async function loadCustomColumns() {
 		try {
@@ -45,7 +50,7 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 			if (typeof response.data?.updatedAt === 'number') {
 				knownCustomUpdatedAt = response.data.updatedAt
 			}
-			const data = response.data as { columns?: CustomColumn[]; recurringTasks?: RecurringTaskDefinition[] }
+			const data = response.data as { columns?: CustomColumn[], recurringTasks?: RecurringTaskDefinition[] }
 			if (data.columns && Array.isArray(data.columns)) {
 				customColumns.value = data.columns.map((col) => ({
 					...col,
@@ -70,9 +75,13 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 
 	function addCustomTask(columnId: string) {
 		const title = newCustomTasks.value[columnId]?.trim()
-		if (!title) return
+		if (!title) {
+			return
+		}
 		const col = customColumns.value.find((c) => c.id === columnId)
-		if (!col) return
+		if (!col) {
+			return
+		}
 		col.tasks.push({
 			id: randomId(),
 			title,
@@ -87,7 +96,9 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 
 	function toggleCustomDone(columnId: string, taskId: string) {
 		const col = customColumns.value.find((c) => c.id === columnId)
-		if (!col) return
+		if (!col) {
+			return
+		}
 		const task = col.tasks.find((t: Task) => t.id === taskId)
 		if (task) {
 			task.done = !task.done
@@ -97,7 +108,9 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 
 	function deleteCustomTask(columnId: string, taskId: string) {
 		const col = customColumns.value.find((c) => c.id === columnId)
-		if (!col) return
+		if (!col) {
+			return
+		}
 		col.tasks = col.tasks.filter((t: Task) => t.id !== taskId)
 		save.trigger()
 	}
@@ -111,10 +124,14 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 	}
 
 	function applyCustomColumnsData(data: unknown) {
-		if (!data || typeof data !== 'object' || !('columns' in data)) return
-		const typed = data as { columns?: CustomColumn[]; recurringTasks?: RecurringTaskDefinition[] }
+		if (!data || typeof data !== 'object' || !('columns' in data)) {
+			return
+		}
+		const typed = data as { columns?: CustomColumn[], recurringTasks?: RecurringTaskDefinition[] }
 		const cols = typed.columns
-		if (!Array.isArray(cols)) return
+		if (!Array.isArray(cols)) {
+			return
+		}
 		customColumns.value = cols.map((col) => ({
 			...col,
 			tasks: (col.tasks || []).map(normalizeTask),
@@ -145,7 +162,9 @@ export function useCustomColumns(recurringTasks: Ref<RecurringTaskDefinition[]>)
 		applyCustomColumnsData,
 		flushCustomSaveTimeout: save.flush,
 		getKnownUpdatedAt: () => knownCustomUpdatedAt,
-		setKnownUpdatedAt: (val: number) => { knownCustomUpdatedAt = val },
+		setKnownUpdatedAt: (val: number) => {
+			knownCustomUpdatedAt = val
+		},
 		isSaveIdle: save.isIdle,
 	}
 }

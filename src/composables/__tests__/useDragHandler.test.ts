@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { RecurringTaskDefinition, Task, WeekData } from '../../types'
+
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
-import { useDragHandler } from '../useDragHandler'
-import { useCustomColumns } from '../useCustomColumns'
-import { useRecurringTasks } from '../useRecurringTasks'
 import { emptyWeek } from '../../utils/weekData'
-import type { RecurringTaskDefinition, WeekData, Task } from '../../types'
+import { useCustomColumns } from '../useCustomColumns'
+import { useDragHandler } from '../useDragHandler'
+import { useRecurringTasks } from '../useRecurringTasks'
 
 vi.mock('@nextcloud/axios', () => ({
 	default: {
@@ -44,7 +45,12 @@ function setup(weekOverride?: WeekData) {
 	const debouncedSaveCustomColumnsSpy = vi.spyOn(columns, 'debouncedSaveCustomColumns')
 
 	const { handleDragChange } = useRecurringTasks(
-		currentYear, currentWeek, weekData, recurringTasks, debouncedSave, columns.customColumns,
+		currentYear,
+		currentWeek,
+		weekData,
+		recurringTasks,
+		debouncedSave,
+		columns.customColumns,
 	)
 
 	const { onDragChange } = useDragHandler({

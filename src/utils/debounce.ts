@@ -3,7 +3,9 @@ export function createDebouncedSave(fn: () => Promise<void>, delay = 300) {
 	let inProgress = false
 
 	function trigger() {
-		if (timeout) clearTimeout(timeout)
+		if (timeout) {
+			clearTimeout(timeout)
+		}
 		timeout = setTimeout(() => {
 			timeout = null
 			fn()

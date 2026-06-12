@@ -1,8 +1,9 @@
-import { ref, computed, nextTick } from 'vue'
-import type { Ref, ComputedRef } from 'vue'
-import type { Recurrence, TaskColor, Task, RecurringTaskDefinition, DayKey, WeekData, CustomColumn, RecurringDeleteMode } from '../types'
+import type { ComputedRef, Ref } from 'vue'
+import type { CustomColumn, DayKey, Recurrence, RecurringDeleteMode, RecurringTaskDefinition, Task, TaskColor, WeekData } from '../types'
+
+import { computed, nextTick, ref } from 'vue'
 import { ALL_KEYS } from '../types'
-import { getWeekDates, toDateStr, getISOWeek, getWeekMonday } from '../utils/dateUtils'
+import { getISOWeek, getWeekDates, getWeekMonday, toDateStr } from '../utils/dateUtils'
 import { randomId } from '../utils/randomId'
 
 export interface TaskEditingDeps {
@@ -26,12 +27,23 @@ export interface TaskEditingDeps {
 
 export function useTaskEditing(deps: TaskEditingDeps) {
 	const {
-		currentYear, currentWeek, weekData, weekDates, recurringTasks, customColumns,
-		debouncedSave, debouncedSaveCustomColumns, saveWeekNow, saveCustomColumnsNow,
-		flushSaveTimeout, flushCustomSaveTimeout, deleteCustomTask, materializeRecurringTasks,
+		currentYear,
+		currentWeek,
+		weekData,
+		weekDates,
+		recurringTasks,
+		customColumns,
+		debouncedSave,
+		debouncedSaveCustomColumns,
+		saveWeekNow,
+		saveCustomColumnsNow,
+		flushSaveTimeout,
+		flushCustomSaveTimeout,
+		deleteCustomTask,
+		materializeRecurringTasks,
 		handleDragChange,
 	} = deps
-	const editingTask = ref<{ day: DayKey | string; taskId: string } | null>(null)
+	const editingTask = ref<{ day: DayKey | string, taskId: string } | null>(null)
 	const editTitle = ref('')
 	const editNotes = ref('')
 	const editRecurrence = ref<Recurrence>('')
@@ -118,9 +130,7 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 			for (let i = 0; i < ALL_KEYS.length; i++) {
 				const dStr = toDateStr(dates[i])
 				if (dStr > dateStr) {
-					weekData.value.days[ALL_KEYS[i]] = weekData.value.days[ALL_KEYS[i]].filter(
-						(t) => t.recurringSourceId !== oldSourceId,
-					)
+					weekData.value.days[ALL_KEYS[i]] = weekData.value.days[ALL_KEYS[i]].filter((t) => t.recurringSourceId !== oldSourceId)
 				}
 			}
 			debouncedSaveCustomColumns()
@@ -128,7 +138,9 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 	}
 
 	function saveEdit() {
-		if (!editingTask.value) return
+		if (!editingTask.value) {
+			return
+		}
 		const { day, taskId } = editingTask.value
 		if (isCustomColumn(day)) {
 			const col = customColumns.value.find((c) => c.id === day)
@@ -168,7 +180,9 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 	}
 
 	function deleteEditingTask(mode?: RecurringDeleteMode) {
-		if (!editingTask.value) return
+		if (!editingTask.value) {
+			return
+		}
 		const { day, taskId } = editingTask.value
 		if (isCustomColumn(day)) {
 			deleteCustomTask(day, taskId)
@@ -203,9 +217,7 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 					for (let i = 0; i < ALL_KEYS.length; i++) {
 						const dStr = toDateStr(dates[i])
 						if (dStr >= dateStr) {
-							weekData.value.days[ALL_KEYS[i]] = weekData.value.days[ALL_KEYS[i]].filter(
-								(t) => t.recurringSourceId !== sourceId,
-							)
+							weekData.value.days[ALL_KEYS[i]] = weekData.value.days[ALL_KEYS[i]].filter((t) => t.recurringSourceId !== sourceId)
 						}
 					}
 					flushSaveTimeout()
@@ -216,9 +228,7 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 					// Delete all occurrences: remove definition and all instances
 					recurringTasks.value = recurringTasks.value.filter((d) => d.id !== sourceId)
 					for (const key of ALL_KEYS) {
-						weekData.value.days[key] = weekData.value.days[key].filter(
-							(t) => t.recurringSourceId !== sourceId,
-						)
+						weekData.value.days[key] = weekData.value.days[key].filter((t) => t.recurringSourceId !== sourceId)
 					}
 					flushSaveTimeout()
 					flushCustomSaveTimeout()
@@ -235,7 +245,9 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 
 	function addTask(day: DayKey) {
 		const title = newTasks.value[day].trim()
-		if (!title) return
+		if (!title) {
+			return
+		}
 		weekData.value.days[day].push({
 			id: randomId(),
 			title,
@@ -268,7 +280,9 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 	// reuse handleDragChange so cross-list bookkeeping (originalDate, exception
 	// dates for moved instances) stays consistent with the drag flow.
 	function moveEditingTask(target: DayKey | string) {
-		if (!editingTask.value) return
+		if (!editingTask.value) {
+			return
+		}
 		const { day: sourceDay, taskId } = editingTask.value
 		if (target === sourceDay) {
 			editingTask.value = null
@@ -280,12 +294,16 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 			const col = customColumns.value.find((c) => c.id === sourceDay)
 			if (col) {
 				const idx = col.tasks.findIndex((t) => t.id === taskId)
-				if (idx !== -1) task = col.tasks.splice(idx, 1)[0]
+				if (idx !== -1) {
+					task = col.tasks.splice(idx, 1)[0]
+				}
 			}
 		} else {
 			const arr = weekData.value.days[sourceDay as DayKey]
 			const idx = arr.findIndex((t) => t.id === taskId)
-			if (idx !== -1) task = arr.splice(idx, 1)[0]
+			if (idx !== -1) {
+				task = arr.splice(idx, 1)[0]
+			}
 		}
 		if (!task) {
 			editingTask.value = null
@@ -320,7 +338,9 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 			}
 		} else {
 			const col = customColumns.value.find((c) => c.id === target)
-			if (col) col.tasks.push(task)
+			if (col) {
+				col.tasks.push(task)
+			}
 		}
 
 		if (!isRecurringDayToDay) {
@@ -333,7 +353,9 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 	}
 
 	const editingTaskIsRecurring = computed(() => {
-		if (!editingTask.value) return false
+		if (!editingTask.value) {
+			return false
+		}
 		const { day, taskId } = editingTask.value
 		if (isCustomColumn(day)) {
 			const col = customColumns.value.find((c) => c.id === day)
@@ -359,21 +381,27 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 	// Implementation: we emit the task + target info upward via a callback
 	// injected through deps so App.vue stays in control of cross-week storage.
 	function moveEditingTaskToNextWeek(targetDay: DayKey) {
-		if (!editingTask.value) return
+		if (!editingTask.value) {
+			return
+		}
 		const { day: sourceDay, taskId } = editingTask.value
 
 		// Extract the task from its current location
-		let task: import('../types').Task | undefined
+		let task: Task | undefined
 		if (isCustomColumn(sourceDay)) {
 			const col = customColumns.value.find((c) => c.id === sourceDay)
 			if (col) {
 				const idx = col.tasks.findIndex((t) => t.id === taskId)
-				if (idx !== -1) task = col.tasks.splice(idx, 1)[0]
+				if (idx !== -1) {
+					task = col.tasks.splice(idx, 1)[0]
+				}
 			}
 		} else {
 			const arr = weekData.value.days[sourceDay as DayKey]
 			const idx = arr.findIndex((t) => t.id === taskId)
-			if (idx !== -1) task = arr.splice(idx, 1)[0]
+			if (idx !== -1) {
+				task = arr.splice(idx, 1)[0]
+			}
 		}
 		if (!task) {
 			editingTask.value = null

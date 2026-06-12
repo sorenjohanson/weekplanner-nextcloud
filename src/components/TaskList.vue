@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import draggable from 'vuedraggable'
 import type { Task } from '../types'
+
+import draggable from 'vuedraggable'
 import TaskItem from './TaskItem.vue'
 
 defineProps<{
@@ -21,19 +22,19 @@ defineEmits<{
 <template>
 	<div class="day-tasks">
 		<draggable
-			:model-value="tasks"
+			:modelValue="tasks"
 			group="weekGroup"
-			item-key="id"
+			itemKey="id"
 			class="task-list"
 			:delay="200"
-			:delay-on-touch-only="true"
-			@update:model-value="$emit('update:tasks', $event)"
+			:delayOnTouchOnly="true"
+			@update:modelValue="$emit('update:tasks', $event)"
 			@change="$emit('change')">
 			<template #item="{ element }: { element: Task }">
 				<TaskItem
 					:task="element"
 					@edit="$emit('edit', $event)"
-					@toggle-done="$emit('toggleDone', $event)" />
+					@toggleDone="$emit('toggleDone', $event)" />
 			</template>
 		</draggable>
 		<div class="task-add">
