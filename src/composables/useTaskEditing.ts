@@ -3,14 +3,19 @@ import type { CustomColumn, DayKey, Recurrence, RecurringDeleteMode, RecurringTa
 
 import { computed, nextTick, ref } from 'vue'
 import { ALL_KEYS } from '../types'
-import { getISOWeek, getWeekDates, getWeekMonday, toDateStr } from '../utils/dateUtils'
+import {
+	dayOfWeekMonFirst,
+	getDayKeyOfDate,
+	getISOWeek,
+	getViewDates,
+	toDateStr,
+} from '../utils/dateUtils'
 import { randomId } from '../utils/randomId'
 
 export interface TaskEditingDeps {
-	currentYear: Ref<number>
-	currentWeek: Ref<number>
+	viewStart: Ref<Date>
+	viewDates: ComputedRef<Date[]>
 	weekData: Ref<WeekData>
-	weekDates: ComputedRef<Date[]>
 	recurringTasks: Ref<RecurringTaskDefinition[]>
 	customColumns: Ref<CustomColumn[]>
 	debouncedSave: () => void
@@ -27,10 +32,9 @@ export interface TaskEditingDeps {
 
 export function useTaskEditing(deps: TaskEditingDeps) {
 	const {
-		currentYear,
-		currentWeek,
+		viewStart,
+		viewDates,
 		weekData,
-		weekDates,
 		recurringTasks,
 		customColumns,
 		debouncedSave,
@@ -75,10 +79,19 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 		})
 	}
 
+	/**
+	 * Find the visible-week Date whose day-of-week matches `day`.
+	 *
+	 * @param day
+	 * @param dates
+	 */
+	function dateForDay(day: DayKey, dates: Date[] = viewDates.value): Date | undefined {
+		return dates.find((d) => getDayKeyOfDate(d) === day)
+	}
+
 	function getTaskDate(day: DayKey): string {
-		const idx = ALL_KEYS.indexOf(day)
-		const dates = getWeekDates(currentYear.value, currentWeek.value)
-		return toDateStr(dates[idx])
+		const date = dateForDay(day)
+		return date ? toDateStr(date) : ''
 	}
 
 	function handleRecurrenceChange(task: Task, day: DayKey) {
@@ -88,8 +101,11 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 		if (newRecurrence && !oldSourceId) {
 			// Setting recurrence for the first time: create a definition
 			const defId = randomId()
-			const dateStr = getTaskDate(day)
-			const date = weekDates.value[ALL_KEYS.indexOf(day)]
+			const date = dateForDay(day)
+			if (!date) {
+				return
+			}
+			const dateStr = toDateStr(date)
 			recurringTasks.value.push({
 				id: defId,
 				title: editTitle.value.trim() || task.title,
@@ -97,7 +113,7 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 				recurrence: newRecurrence as 'daily' | 'weekly' | 'monthly',
 				startDate: dateStr,
 				endDate: '',
-				dayOfWeek: ALL_KEYS.indexOf(day),
+				dayOfWeek: dayOfWeekMonFirst(date),
 				dayOfMonth: date.getDate(),
 				exceptionDates: [],
 			})
@@ -125,12 +141,12 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 				def.endDate = dateStr
 			}
 			task.recurrence = ''
-			// Remove instances from days after endDate in this week
-			const dates = getWeekDates(currentYear.value, currentWeek.value)
-			for (let i = 0; i < ALL_KEYS.length; i++) {
-				const dStr = toDateStr(dates[i])
+			// Remove future-of-this-day instances within the visible window.
+			for (const date of viewDates.value) {
+				const dStr = toDateStr(date)
 				if (dStr > dateStr) {
-					weekData.value.days[ALL_KEYS[i]] = weekData.value.days[ALL_KEYS[i]].filter((t) => t.recurringSourceId !== oldSourceId)
+					const key = getDayKeyOfDate(date)
+					weekData.value.days[key] = weekData.value.days[key].filter((t) => t.recurringSourceId !== oldSourceId)
 				}
 			}
 			debouncedSaveCustomColumns()
@@ -213,11 +229,11 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 						prev.setDate(prev.getDate() - 1)
 						def.endDate = toDateStr(prev)
 					}
-					const dates = getWeekDates(currentYear.value, currentWeek.value)
-					for (let i = 0; i < ALL_KEYS.length; i++) {
-						const dStr = toDateStr(dates[i])
+					for (const date of viewDates.value) {
+						const dStr = toDateStr(date)
 						if (dStr >= dateStr) {
-							weekData.value.days[ALL_KEYS[i]] = weekData.value.days[ALL_KEYS[i]].filter((t) => t.recurringSourceId !== sourceId)
+							const key = getDayKeyOfDate(date)
+							weekData.value.days[key] = weekData.value.days[key].filter((t) => t.recurringSourceId !== sourceId)
 						}
 					}
 					flushSaveTimeout()
@@ -316,12 +332,11 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 
 		if (isRecurringDayToDay) {
 			const def = recurringTasks.value.find((d) => d.id === task!.recurringSourceId)
-			if (def) {
-				const targetIdx = ALL_KEYS.indexOf(target as DayKey)
-				const targetDateStr = toDateStr(weekDates.value[targetIdx])
-				const targetDate = weekDates.value[targetIdx]
+			const targetDate = dateForDay(target as DayKey)
+			if (def && targetDate) {
+				const targetDateStr = toDateStr(targetDate)
 				def.startDate = targetDateStr
-				def.dayOfWeek = targetIdx
+				def.dayOfWeek = dayOfWeekMonFirst(targetDate)
 				def.dayOfMonth = targetDate.getDate()
 				def.exceptionDates = def.exceptionDates.filter((d) => d >= targetDateStr)
 				task.recurringOriginalDate = targetDateStr
@@ -366,20 +381,11 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 		return !!task?.recurringSourceId
 	})
 
-	// Move the currently edited task to a given day in the following week.
-	// The task is removed from the current day/column, then injected into the
-	// next week's week-data via a temporary year+week offset.  Because
-	// weekData only holds the currently-visible week, we delegate persistence
-	// to saveWeekNow/loadWeek-cycle: we save the current week first (task
-	// removed), then navigate the caller to the next week so the normal
-	// loadWeek picks up a fresh slice — except we can't navigate from here.
-	// Instead we adopt the simpler and equally correct approach: stash the
-	// task in localStorage under the target week key so it will be merged in
-	// on the next load.  For non-recurring tasks this is the cleanest option
-	// with zero coupling to the navigation layer.
-	//
-	// Implementation: we emit the task + target info upward via a callback
-	// injected through deps so App.vue stays in control of cross-week storage.
+	// Move the currently edited task to a day in the following visible week.
+	// "Next week" here is the view shifted +7 days, regardless of how the
+	// user's firstDayOfWeek aligns with ISO weeks. We resolve the target date
+	// inside that shifted window, derive its ISO-week storage bucket, and hand
+	// off to the cross-week stasher.
 	function moveEditingTaskToNextWeek(targetDay: DayKey) {
 		if (!editingTask.value) {
 			return
@@ -412,13 +418,19 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 		flushSaveTimeout()
 		saveWeekNow()
 
-		// Compute target week (current week + 7 days from Monday)
-		const monday = getWeekMonday(currentYear.value, currentWeek.value)
-		monday.setDate(monday.getDate() + 7)
-		const { year: nextYear, week: nextWeek } = getISOWeek(monday)
+		// Resolve target date in the next visible week's chronological dates
+		// and find which ISO-week bucket it belongs to.
+		const nextViewStart = new Date(viewStart.value)
+		nextViewStart.setDate(nextViewStart.getDate() + 7)
+		const nextDates = getViewDates(nextViewStart)
+		const targetDate = dateForDay(targetDay, nextDates)
+		if (!targetDate) {
+			editingTask.value = null
+			return
+		}
+		const { year, week } = getISOWeek(targetDate)
 
-		// Delegate cross-week stashing to the injected callback
-		deps.stashTaskForNextWeek(task, targetDay, nextYear, nextWeek)
+		deps.stashTaskForNextWeek(task, targetDay, year, week)
 
 		editingTask.value = null
 	}

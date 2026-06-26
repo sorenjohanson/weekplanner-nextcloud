@@ -1,30 +1,54 @@
 import type { DayKey } from '../types'
 
 import { computed, ref } from 'vue'
-import { ALL_KEYS } from '../types'
-import { getISOWeek, getWeekDates, getWeekMonday } from '../utils/dateUtils'
+import { getFirstDayOfWeek, getOrderedKeys } from '../types'
+import { getISOWeek, getViewBuckets, getViewDates, getViewStart } from '../utils/dateUtils'
 
 export function useWeekNavigation() {
-	const { year: _initYear, week: _initWeek } = getISOWeek(new Date())
-	const currentYear = ref(_initYear)
-	const currentWeek = ref(_initWeek)
+	// Source of truth for the visible window: the first day shown, at local midnight.
+	const viewStart = ref<Date>(getViewStart(new Date(), getFirstDayOfWeek()))
 
-	const weekDates = computed(() => getWeekDates(currentYear.value, currentWeek.value))
+	const weekDates = computed(() => getViewDates(viewStart.value))
+
+	// Buckets the visible window draws from. 1 when firstDay = Monday (window
+	// aligns with ISO week), 2 otherwise.
+	const bucketKeys = computed(() => getViewBuckets(viewStart.value))
+
+	// Best-effort single ISO-week label for the visible window. We pick the ISO
+	// week of the date closest to mid-window (day 3) so a Sunday-start view of
+	// e.g. Sun Jun 21 – Sat Jun 27 still labels as the Mon-anchored ISO week
+	// rather than the trailing one.
+	const labelISOWeek = computed(() => getISOWeek(weekDates.value[3]))
+
+	// Kept for backward compatibility with code/tests that destructure these.
+	// They reflect the labelISOWeek; mutating them (as legacy tests do) snaps
+	// the view to that ISO week's first-day-aligned window.
+	const currentYear = computed({
+		get: () => labelISOWeek.value.year,
+		set: (year: number) => {
+			snapToISOWeek(year, labelISOWeek.value.week)
+		},
+	})
+	const currentWeek = computed({
+		get: () => labelISOWeek.value.week,
+		set: (week: number) => {
+			snapToISOWeek(labelISOWeek.value.year, week)
+		},
+	})
 
 	const weekLabel = computed(() => {
 		const dates = weekDates.value
 		if (dates.length === 0) {
 			return ''
 		}
-		const mon = dates[0]
-		const sun = dates[6]
+		const start = dates[0]
+		const end = dates[6]
 		const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-		const yearStr = sun.getFullYear()
-		return `Week ${currentWeek.value} \u00B7 ${fmt(mon)} \u2013 ${fmt(sun)}, ${yearStr}`
+		return `Week ${labelISOWeek.value.week} \u00B7 ${fmt(start)} \u2013 ${fmt(end)}, ${end.getFullYear()}`
 	})
 
 	function dayIndex(day: DayKey): number {
-		return ALL_KEYS.indexOf(day)
+		return getOrderedKeys().indexOf(day)
 	}
 
 	function isToday(day: DayKey): boolean {
@@ -48,33 +72,41 @@ export function useWeekNavigation() {
 		return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 	}
 
+	function shiftDays(days: number) {
+		const next = new Date(viewStart.value)
+		next.setDate(next.getDate() + days)
+		viewStart.value = next
+	}
+
 	function prevWeek() {
-		const monday = getWeekMonday(currentYear.value, currentWeek.value)
-		monday.setDate(monday.getDate() - 7)
-		const { year, week } = getISOWeek(monday)
-		currentYear.value = year
-		currentWeek.value = week
+		shiftDays(-7)
 	}
 
 	function nextWeek() {
-		const monday = getWeekMonday(currentYear.value, currentWeek.value)
-		monday.setDate(monday.getDate() + 7)
-		const { year, week } = getISOWeek(monday)
-		currentYear.value = year
-		currentWeek.value = week
+		shiftDays(7)
 	}
 
 	function goToday() {
-		const { year, week } = getISOWeek(new Date())
-		currentYear.value = year
-		currentWeek.value = week
+		viewStart.value = getViewStart(new Date(), getFirstDayOfWeek())
+	}
+
+	function snapToISOWeek(year: number, week: number) {
+		// Anchor to the Monday of the requested ISO week, then back up to the
+		// preferred first day. Keeps user-visible navigation by ISO week-number
+		// consistent regardless of firstDayOfWeek.
+		const monday = new Date(year, 0, 4)
+		const dow = monday.getDay() || 7
+		monday.setDate(monday.getDate() - dow + 1 + (week - 1) * 7)
+		viewStart.value = getViewStart(monday, getFirstDayOfWeek())
 	}
 
 	return {
+		viewStart,
 		currentYear,
 		currentWeek,
 		weekDates,
 		weekLabel,
+		bucketKeys,
 		dayIndex,
 		isToday,
 		formatDate,
