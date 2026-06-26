@@ -16,8 +16,8 @@ import { useRecurringTasks } from './composables/useRecurringTasks'
 import { useTaskEditing } from './composables/useTaskEditing'
 import { useWeekNavigation } from './composables/useWeekNavigation'
 import { useWeekPersistence } from './composables/useWeekPersistence'
-import { ALL_KEYS, DAY_LABELS, WEEKDAY_KEYS, WEEKEND_KEYS } from './types'
-import { getISOWeek, getWeekDates, getWeekMonday } from './utils/dateUtils'
+import { DAY_LABELS, getOrderedKeys } from './types'
+import { getViewDates } from './utils/dateUtils'
 import { emptyWeek, normalizeWeekData } from './utils/weekData'
 
 // --- Shared state ---
@@ -30,10 +30,12 @@ let onWeekLoaded = () => {
 
 // --- Composables ---
 const {
+	viewStart,
 	currentYear,
 	currentWeek,
 	weekDates,
 	weekLabel,
+	bucketKeys,
 	isToday,
 	formatDate,
 	prevWeek,
@@ -42,8 +44,7 @@ const {
 } = useWeekNavigation()
 
 const weekPersistence = useWeekPersistence(
-	currentYear,
-	currentWeek,
+	bucketKeys,
 	weekData,
 	() => onWeekLoaded(),
 )
@@ -52,8 +53,7 @@ const columns = useCustomColumns(recurringTasks)
 const { customColumns, newCustomTasks, addCustomTask, toggleCustomDone, updateColumnTitle } = columns
 
 const recurring = useRecurringTasks(
-	currentYear,
-	currentWeek,
+	weekDates,
 	weekData,
 	recurringTasks,
 	weekPersistence.debouncedSave,
@@ -66,8 +66,20 @@ onWeekLoaded = () => {
 	}
 }
 
-// Stash a task into a future week's server-side data.
-// We do a GET for that week, append the task, then PUT it back.
+// Day key in chronological order, computed so it picks up the user's
+// firstDayOfWeek preference (resolved at boot in main.ts).
+const orderedKeys = computed<DayKey[]>(() => getOrderedKeys())
+// The first five visible days render as standalone columns; the last two are
+// stacked into a single half-width column to give the other days more space.
+// With firstDay=Mon this reproduces the classic five-weekday + Sat/Sun stack
+// layout; for other start days the stacking simply moves to whichever two
+// days fall at the end of the visible window.
+const primaryKeys = computed<DayKey[]>(() => orderedKeys.value.slice(0, 5))
+const stackedKeys = computed<DayKey[]>(() => orderedKeys.value.slice(5, 7))
+
+// Stash a task into a specific (year, week, day) on the server. Used when
+// moving a task to the following week — the target bucket isn't necessarily
+// loaded, so we GET, mutate, PUT.
 async function stashTaskForNextWeek(task: Task, targetDay: DayKey, year: number, week: number) {
 	try {
 		const url = generateUrl('/apps/weekplanner/week/{year}/{week}', {
@@ -79,8 +91,8 @@ async function stashTaskForNextWeek(task: Task, targetDay: DayKey, year: number,
 		data.days[targetDay].push(task)
 		await axios.put(url, data)
 	} catch {
-		// If the fetch fails we fall back to a silent no-op.
-		// The user can navigate to the next week and add the task manually.
+		// If the fetch fails we fall back to a silent no-op. The user can
+		// navigate forwards and add the task manually.
 	}
 }
 
@@ -100,10 +112,9 @@ const {
 	moveEditingTask,
 	moveEditingTaskToNextWeek,
 } = useTaskEditing({
-	currentYear,
-	currentWeek,
+	viewStart,
+	viewDates: weekDates,
 	weekData,
-	weekDates,
 	recurringTasks,
 	customColumns: columns.customColumns,
 	debouncedSave: weekPersistence.debouncedSave,
@@ -118,7 +129,7 @@ const {
 	stashTaskForNextWeek,
 })
 
-const moveDayOptions = computed(() => ALL_KEYS.map((key) => ({
+const moveDayOptions = computed(() => orderedKeys.value.map((key) => ({
 	key,
 	label: DAY_LABELS[key],
 	date: formatDate(key),
@@ -126,17 +137,14 @@ const moveDayOptions = computed(() => ALL_KEYS.map((key) => ({
 })))
 
 const moveNextWeekDayOptions = computed(() => {
-	const monday = getWeekMonday(currentYear.value, currentWeek.value)
-	monday.setDate(monday.getDate() + 7)
-	const nextDates = getWeekDates(getISOWeek(monday).year, getISOWeek(monday).week)
-	return ALL_KEYS.map((key, idx) => {
-		const date = nextDates[idx]
-		return {
-			key,
-			label: DAY_LABELS[key],
-			date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-		}
-	})
+	const nextStart = new Date(viewStart.value)
+	nextStart.setDate(nextStart.getDate() + 7)
+	const nextDates = getViewDates(nextStart)
+	return orderedKeys.value.map((key, idx) => ({
+		key,
+		label: DAY_LABELS[key],
+		date: nextDates[idx].toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+	}))
 })
 
 const moveColumnOptions = computed(() => customColumns.value.map((c) => ({
@@ -145,14 +153,14 @@ const moveColumnOptions = computed(() => customColumns.value.map((c) => ({
 })))
 
 const polling = usePolling({
-	currentYear,
-	currentWeek,
+	bucketKeys,
 	weekData,
 	editingTask,
 	loadWeek: weekPersistence.loadWeek,
 	loadCustomColumns: columns.loadCustomColumns,
 	materializeRecurringTasks: recurring.materializeRecurringTasks,
 	applyCustomColumnsData: columns.applyCustomColumnsData,
+	applyBucketData: weekPersistence.applyBucketData,
 	isWeekSaveIdle: weekPersistence.isSaveIdle,
 	isWeekLoadIdle: weekPersistence.isLoadIdle,
 	isCustomSaveIdle: columns.isSaveIdle,
@@ -175,11 +183,10 @@ const { onDragChange } = useDragHandler({
 // --- Lifecycle ---
 let mounted = false
 
-watch([currentYear, currentWeek], async () => {
+watch(viewStart, async () => {
 	if (!polling.isUsingNotifyPush()) {
 		polling.stopWeekPoll()
 	}
-	weekPersistence.setKnownUpdatedAt(0)
 	await weekPersistence.loadWeek()
 	if (!polling.isUsingNotifyPush() && mounted) {
 		polling.longPollWeek()
@@ -202,6 +209,12 @@ onUnmounted(() => {
 	weekPersistence.flushSaveTimeout()
 	columns.flushCustomSaveTimeout()
 })
+
+// `currentYear` / `currentWeek` are still destructured for callers (and
+// remain part of the navigation composable's public surface) but are not
+// referenced from this component directly any more.
+void currentYear
+void currentWeek
 </script>
 
 <template>
@@ -227,7 +240,7 @@ onUnmounted(() => {
 
 				<div class="week-grid">
 					<div
-						v-for="day in WEEKDAY_KEYS"
+						v-for="day in primaryKeys"
 						:key="day"
 						class="day-column">
 						<div class="day-header" :class="{ 'is-today': isToday(day) }">
@@ -245,11 +258,11 @@ onUnmounted(() => {
 							@addTask="addTask(day)" />
 					</div>
 
-					<div class="weekend-column">
+					<div class="stacked-column">
 						<div
-							v-for="day in WEEKEND_KEYS"
+							v-for="day in stackedKeys"
 							:key="day"
-							class="weekend-half">
+							class="stacked-half">
 							<div class="day-header day-header-inline" :class="{ 'is-today': isToday(day) }">
 								<span class="day-name">{{ DAY_LABELS[day] }}</span>
 								<span class="day-date">{{ formatDate(day) }}</span>
@@ -351,12 +364,10 @@ onUnmounted(() => {
 	grid-template-columns: repeat(5, 1fr) 0.8fr;
 	gap: 1px;
 	flex: 1 0 auto;
-	/* Pin the weekdays' height so custom-columns can never steal
-	   space from them: as soon as custom grows beyond its minimum,
-	   it pushes the page taller instead of shrinking week-grid.
-	   Reserved (~400px) ≈ NC top bar (~50) + weekplanner padding
-	   (32) + weekplanner-header (~60) + custom-columns minimum
-	   (260). Falls back to 240px on very short viewports. */
+	/* Reserve enough vertical space for the weekday columns regardless of how
+	   tall the custom columns grow. ~400px covers the Nextcloud top bar (~50),
+	   our own padding (32), the planner header (~60), and the custom-columns
+	   minimum (260). */
 	min-height: max(240px, calc(100vh - 400px));
 	background-color: var(--color-border);
 	border: 1px solid var(--color-border);
@@ -370,23 +381,23 @@ onUnmounted(() => {
 	min-height: 0;
 }
 
-.weekend-column {
+.stacked-column {
 	display: flex;
 	flex-direction: column;
 	gap: 1px;
 	background-color: var(--color-border);
 }
 
-.weekend-half {
+.stacked-half {
 	display: flex;
 	flex-direction: column;
 	/* Use auto basis so each half sizes to its content first and only shares
 	   extra space evenly. With `flex: 1` (basis 0) the halves split the parent
-	   50/50 regardless of content, so Saturday's tasks overflow behind Sunday
-	   once they exceed half the row height. The min-height keeps the lighter
-	   half (typically Sunday) at a baseline size when the other half's tasks
-	   push the column taller — without it Sunday would shrink to just the
-	   input field. ~half of the week-grid min-height of 240px. */
+	   50/50 regardless of content, so the first stacked day's tasks would
+	   overflow behind the second once they exceed half the row height. The
+	   min-height keeps the lighter half at a baseline size when the other
+	   half's tasks push the column taller — without it that half would shrink
+	   to just the input field. ~half of the week-grid min-height of 240px. */
 	flex: 1 1 auto;
 	min-height: 120px;
 	background-color: var(--color-main-background);
@@ -399,6 +410,10 @@ onUnmounted(() => {
 	padding: 4px 12px;
 	border-bottom: 1px solid var(--color-border);
 	flex-shrink: 0;
+}
+
+.day-header-inline {
+	flex-direction: row;
 }
 
 .day-header.is-today {
@@ -419,10 +434,6 @@ onUnmounted(() => {
 .day-date {
 	font-size: 11px;
 	color: var(--color-text-maxcontrast);
-}
-
-.day-header-inline {
-	flex-direction: row;
 }
 
 /* Custom columns */
@@ -494,12 +505,12 @@ onUnmounted(() => {
 		border-radius: 8px 8px 0 0;
 	}
 
-	.week-grid .weekend-column {
+	.week-grid .stacked-column {
 		gap: 0;
 	}
 
 	.week-grid .day-column,
-	.week-grid .weekend-half {
+	.week-grid .stacked-half {
 		min-height: 200px;
 	}
 

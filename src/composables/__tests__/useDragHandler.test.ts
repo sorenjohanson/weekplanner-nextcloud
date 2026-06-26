@@ -1,7 +1,8 @@
 import type { RecurringTaskDefinition, Task, WeekData } from '../../types'
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { getViewDates } from '../../utils/dateUtils'
 import { emptyWeek } from '../../utils/weekData'
 import { useCustomColumns } from '../useCustomColumns'
 import { useDragHandler } from '../useDragHandler'
@@ -19,8 +20,7 @@ vi.mock('@nextcloud/router', () => ({
 }))
 
 // Week 12 of 2026: Mon Mar 16 – Sun Mar 22
-const TEST_YEAR = 2026
-const TEST_WEEK = 12
+const VIEW_START = new Date(2026, 2, 16)
 
 function makeTask(title: string): Task {
 	return {
@@ -34,8 +34,8 @@ function makeTask(title: string): Task {
 }
 
 function setup(weekOverride?: WeekData) {
-	const currentYear = ref(TEST_YEAR)
-	const currentWeek = ref(TEST_WEEK)
+	const viewStart = ref(new Date(VIEW_START))
+	const viewDates = computed(() => getViewDates(viewStart.value))
 	const weekData = ref<WeekData>(weekOverride ?? emptyWeek())
 	const recurringTasks = ref<RecurringTaskDefinition[]>([])
 	const debouncedSave = vi.fn()
@@ -45,8 +45,7 @@ function setup(weekOverride?: WeekData) {
 	const debouncedSaveCustomColumnsSpy = vi.spyOn(columns, 'debouncedSaveCustomColumns')
 
 	const { handleDragChange } = useRecurringTasks(
-		currentYear,
-		currentWeek,
+		viewDates,
 		weekData,
 		recurringTasks,
 		debouncedSave,

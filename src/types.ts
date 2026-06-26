@@ -31,6 +31,7 @@ export interface RecurringTaskDefinition {
 	recurrence: 'daily' | 'weekly' | 'monthly'
 	startDate: string
 	endDate: string
+	/** 0=Monday..6=Sunday — canonical day of week, independent of the user's firstDayOfWeek display preference. */
 	dayOfWeek: number
 	dayOfMonth: number
 	exceptionDates: string[]
@@ -48,8 +49,10 @@ export interface CustomColumn {
 	tasks: Task[]
 }
 
-export const WEEKDAY_KEYS: DayKey[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
-export const WEEKEND_KEYS: DayKey[] = ['saturday', 'sunday']
+// Canonical Monday-first key list. Used for iteration where order is irrelevant
+// (e.g. clearing all days, normalising backend payloads).
+export const ALL_KEYS: DayKey[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+
 export const DAY_LABELS: Record<DayKey, string> = {
 	monday: 'Monday',
 	tuesday: 'Tuesday',
@@ -59,4 +62,36 @@ export const DAY_LABELS: Record<DayKey, string> = {
 	saturday: 'Saturday',
 	sunday: 'Sunday',
 }
-export const ALL_KEYS: DayKey[] = [...WEEKDAY_KEYS, ...WEEKEND_KEYS]
+
+// User's preferred first day of week as 0=Sunday..6=Saturday (Nextcloud convention).
+// Mutable module singleton: set once from initial state at app boot, read by
+// composables thereafter. A reload picks up changes — there is no reactivity
+// because Personal info preference changes already require a page reload.
+let firstDayOfWeekValue = 1
+
+export function setFirstDayOfWeek(value: number): void {
+	const normalized = ((value % 7) + 7) % 7
+	firstDayOfWeekValue = normalized
+}
+
+export function getFirstDayOfWeek(): number {
+	return firstDayOfWeekValue
+}
+
+// JS getDay() convention (0=Sun..6=Sat) → canonical DayKey (Mon-Sun list index).
+const KEY_FOR_JS_DAY: DayKey[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+
+/**
+ * Day keys in the user's preferred display order, starting at firstDayOfWeek.
+ * For firstDay=1 (Mon, default): ['monday'..'sunday']. For firstDay=0 (Sun):
+ * ['sunday', 'monday'..'saturday']. Used for rendering and for paired iteration
+ * with the visible week's chronological dates.
+ */
+export function getOrderedKeys(): DayKey[] {
+	const start = firstDayOfWeekValue
+	const result: DayKey[] = []
+	for (let i = 0; i < 7; i++) {
+		result.push(KEY_FOR_JS_DAY[(start + i) % 7])
+	}
+	return result
+}

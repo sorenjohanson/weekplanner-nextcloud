@@ -2,7 +2,8 @@ import type { WeekData } from '../../types'
 
 import axios from '@nextcloud/axios'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { getViewBuckets } from '../../utils/dateUtils'
 import { emptyWeek } from '../../utils/weekData'
 import { useWeekPersistence } from '../useWeekPersistence'
 
@@ -18,11 +19,12 @@ const mockGet = vi.mocked(axios.get)
 const mockPut = vi.mocked(axios.put)
 
 function setup(weekOverride?: WeekData) {
-	const currentYear = ref(2026)
-	const currentWeek = ref(12)
+	// Monday Mar 16, 2026 → ISO week 12 of 2026, single bucket (firstDay=Mon).
+	const viewStart = ref(new Date(2026, 2, 16))
+	const bucketKeys = computed(() => getViewBuckets(viewStart.value))
 	const weekData = ref<WeekData>(weekOverride ?? emptyWeek())
 	const onLoaded = vi.fn()
-	const persistence = useWeekPersistence(currentYear, currentWeek, weekData, onLoaded)
+	const persistence = useWeekPersistence(bucketKeys, weekData, onLoaded)
 	return { ...persistence, weekData, onLoaded }
 }
 
