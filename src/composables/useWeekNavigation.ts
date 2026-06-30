@@ -1,8 +1,19 @@
 import type { DayKey } from '../types'
 
+import { getLocale } from '@nextcloud/l10n'
 import { computed, ref } from 'vue'
 import { getFirstDayOfWeek, getOrderedKeys } from '../types'
 import { getISOWeek, getViewBuckets, getViewDates, getViewStart } from '../utils/dateUtils'
+
+function getValidLocale(): string {
+	const locale = getLocale().replace(/_/g, '-')
+	try {
+		new Intl.DateTimeFormat(locale)
+		return locale
+	} catch {
+		return 'en-US'
+	}
+}
 
 export function useWeekNavigation() {
 	// Source of truth for the visible window: the first day shown, at local midnight.
@@ -43,7 +54,7 @@ export function useWeekNavigation() {
 		}
 		const start = dates[0]
 		const end = dates[6]
-		const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+		const fmt = (d: Date) => d.toLocaleDateString(getValidLocale(), { month: 'short', day: 'numeric' })
 		return `Week ${labelISOWeek.value.week} \u00B7 ${fmt(start)} \u2013 ${fmt(end)}, ${end.getFullYear()}`
 	})
 
@@ -69,7 +80,7 @@ export function useWeekNavigation() {
 		if (!date) {
 			return ''
 		}
-		return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+		return date.toLocaleDateString(getValidLocale(), { month: 'short', day: 'numeric' })
 	}
 
 	function formatLongDate(day: DayKey): string {
@@ -77,7 +88,7 @@ export function useWeekNavigation() {
 		if (!date) {
 			return ''
 		}
-		return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+		return date.toLocaleDateString(getValidLocale(), { month: 'long', day: 'numeric' })
 	}
 
 	function shiftDays(days: number) {

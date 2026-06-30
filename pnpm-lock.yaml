@@ -17,6 +17,9 @@ importers:
       '@nextcloud/initial-state':
         specifier: ^3.0.0
         version: 3.0.0
+      '@nextcloud/l10n':
+        specifier: ^3.4.1
+        version: 3.4.1
       '@nextcloud/notify_push':
         specifier: ^1.4.0
         version: 1.4.0
