@@ -9,6 +9,7 @@ import NcButton from '@nextcloud/vue/components/NcButton'
 import NcContent from '@nextcloud/vue/components/NcContent'
 import EditDialog from './components/EditDialog.vue'
 import TaskList from './components/TaskList.vue'
+import TaskOverflowMenu from './components/TaskOverflowMenu.vue'
 import { useCustomColumns } from './composables/useCustomColumns'
 import { useDragHandler } from './composables/useDragHandler'
 import { usePolling } from './composables/usePolling'
@@ -38,6 +39,7 @@ const {
 	bucketKeys,
 	isToday,
 	formatDate,
+	formatLongDate,
 	prevWeek,
 	nextWeek,
 	goToday,
@@ -246,6 +248,7 @@ void currentWeek
 						<div class="day-header" :class="{ 'is-today': isToday(day) }">
 							<span class="day-name">{{ DAY_LABELS[day] }}</span>
 							<span class="day-date">{{ formatDate(day) }}</span>
+							<TaskOverflowMenu :tasks="weekData.days[day]" :label="formatLongDate(day)" />
 						</div>
 						<TaskList
 							:tasks="weekData.days[day]"
@@ -266,6 +269,7 @@ void currentWeek
 							<div class="day-header day-header-inline" :class="{ 'is-today': isToday(day) }">
 								<span class="day-name">{{ DAY_LABELS[day] }}</span>
 								<span class="day-date">{{ formatDate(day) }}</span>
+								<TaskOverflowMenu :tasks="weekData.days[day]" :label="formatLongDate(day)" />
 							</div>
 							<TaskList
 								:tasks="weekData.days[day]"
@@ -292,6 +296,7 @@ void currentWeek
 								placeholder="Column title…"
 								@input="updateColumnTitle(col.id, ($event.target as HTMLInputElement).value)"
 								@keydown.enter="($event.target as HTMLInputElement).blur()">
+							<TaskOverflowMenu :tasks="col.tasks" :label="col.title || 'this column'" />
 						</div>
 						<TaskList
 							:tasks="col.tasks"
@@ -404,10 +409,10 @@ void currentWeek
 }
 
 .day-header {
+	position: relative;
 	display: flex;
 	align-items: baseline;
-	justify-content: space-between;
-	padding: 4px 12px;
+	padding: 4px 8px 4px 12px;
 	border-bottom: 1px solid var(--color-border);
 	flex-shrink: 0;
 }
@@ -434,6 +439,7 @@ void currentWeek
 .day-date {
 	font-size: 11px;
 	color: var(--color-text-maxcontrast);
+	margin-left: auto;
 }
 
 /* Custom columns */
@@ -460,7 +466,7 @@ void currentWeek
 }
 
 .custom-column-title {
-	width: 100%;
+	flex: 1;
 	border: none;
 	background: transparent;
 	font-size: 14px;

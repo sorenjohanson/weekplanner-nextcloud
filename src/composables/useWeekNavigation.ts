@@ -72,6 +72,14 @@ export function useWeekNavigation() {
 		return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 	}
 
+	function formatLongDate(day: DayKey): string {
+		const date = weekDates.value[dayIndex(day)]
+		if (!date) {
+			return ''
+		}
+		return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+	}
+
 	function shiftDays(days: number) {
 		const next = new Date(viewStart.value)
 		next.setDate(next.getDate() + days)
@@ -110,6 +118,7 @@ export function useWeekNavigation() {
 		dayIndex,
 		isToday,
 		formatDate,
+		formatLongDate,
 		prevWeek,
 		nextWeek,
 		goToday,
