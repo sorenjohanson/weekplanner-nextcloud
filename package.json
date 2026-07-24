@@ -27,7 +27,7 @@
     "vuedraggable": "^4.1.0"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.5",
+    "@eslint/eslintrc": "^3.3.6",
     "@eslint/js": "^10.0.1",
     "@nextcloud/browserslist-config": "^3.1.2",
     "@nextcloud/eslint-config": "9.0.0-rc.9",
