@@ -1,26 +1,27 @@
-import type { Ref } from 'vue'
-import type { CustomColumn, RecurringTaskDefinition, WeekData } from '../types'
+import type { ComputedRef, Ref } from 'vue'
+import type { CustomColumn, DayKey, RecurringTaskDefinition, WeekData } from '../types'
 
-import { ALL_KEYS } from '../types'
-import { getWeekDates, toDateStr } from '../utils/dateUtils'
+import { dayOfWeekMonFirst, getDayKeyOfDate, toDateStr } from '../utils/dateUtils'
 import { randomId } from '../utils/randomId'
 
 export function useRecurringTasks(
-	currentYear: Ref<number>,
-	currentWeek: Ref<number>,
+	viewDates: ComputedRef<Date[]>,
 	weekData: Ref<WeekData>,
 	recurringTasks: Ref<RecurringTaskDefinition[]>,
 	debouncedSave: () => void,
 	customColumns?: Ref<CustomColumn[]>,
 ) {
 	function materializeRecurringTasks() {
-		const dates = getWeekDates(currentYear.value, currentWeek.value)
+		const dates = viewDates.value
 		let changed = false
 
-		// Clean up stale recurring instances (definition ended, deleted, or no longer matching pattern)
-		for (let i = 0; i < ALL_KEYS.length; i++) {
-			const day = ALL_KEYS[i]
-			const dateStr = toDateStr(dates[i])
+		// Clean up stale recurring instances (definition ended, deleted, or no
+		// longer matching pattern). We iterate the visible window by date and
+		// look up each date's storage slot via its day-of-week key.
+		for (const date of dates) {
+			const day: DayKey = getDayKeyOfDate(date)
+			const dateStr = toDateStr(date)
+			const canonicalDow = dayOfWeekMonFirst(date)
 			const before = weekData.value.days[day].length
 			weekData.value.days[day] = weekData.value.days[day].filter((t) => {
 				if (!t.recurringSourceId) {
@@ -37,10 +38,10 @@ export function useRecurringTasks(
 				const wasMovedHere = t.recurringOriginalDate && t.recurringOriginalDate !== dateStr
 				// Remove instances that no longer match the current recurrence pattern
 				// (e.g. after changing from weekly to monthly) — but not moved instances
-				if (!wasMovedHere && def.recurrence === 'weekly' && i !== def.dayOfWeek) {
+				if (!wasMovedHere && def.recurrence === 'weekly' && canonicalDow !== def.dayOfWeek) {
 					return false
 				}
-				if (!wasMovedHere && def.recurrence === 'monthly' && dates[i].getDate() !== def.dayOfMonth) {
+				if (!wasMovedHere && def.recurrence === 'monthly' && date.getDate() !== def.dayOfMonth) {
 					return false
 				}
 				if (!wasMovedHere && def.exceptionDates?.includes(dateStr)) {
@@ -54,10 +55,10 @@ export function useRecurringTasks(
 		}
 
 		// Materialize new instances
-		for (let i = 0; i < ALL_KEYS.length; i++) {
-			const day = ALL_KEYS[i]
-			const date = dates[i]
+		for (const date of dates) {
+			const day: DayKey = getDayKeyOfDate(date)
 			const dateStr = toDateStr(date)
+			const canonicalDow = dayOfWeekMonFirst(date)
 			for (const def of recurringTasks.value) {
 				if (dateStr < def.startDate) {
 					continue
@@ -69,7 +70,7 @@ export function useRecurringTasks(
 				if (def.recurrence === 'daily') {
 					matches = true
 				} else if (def.recurrence === 'weekly') {
-					matches = i === def.dayOfWeek
+					matches = canonicalDow === def.dayOfWeek
 				} else if (def.recurrence === 'monthly') {
 					matches = date.getDate() === def.dayOfMonth
 				}
@@ -101,7 +102,7 @@ export function useRecurringTasks(
 	}
 
 	function handleDragChange(): boolean {
-		const dates = getWeekDates(currentYear.value, currentWeek.value)
+		const dates = viewDates.value
 		let definitionsChanged = false
 
 		// Check custom columns: recurring tasks moved here need an exception on their original date
@@ -116,15 +117,16 @@ export function useRecurringTasks(
 						continue
 					}
 					if (!task.recurringOriginalDate) {
-						for (let i = 0; i < ALL_KEYS.length; i++) {
-							const ds = toDateStr(dates[i])
+						for (const date of dates) {
+							const ds = toDateStr(date)
+							const canonicalDow = dayOfWeekMonFirst(date)
 							let matches = false
 							if (def.recurrence === 'daily') {
 								matches = true
 							} else if (def.recurrence === 'weekly') {
-								matches = i === def.dayOfWeek
+								matches = canonicalDow === def.dayOfWeek
 							} else if (def.recurrence === 'monthly') {
-								matches = dates[i].getDate() === def.dayOfMonth
+								matches = date.getDate() === def.dayOfMonth
 							}
 							if (matches && ds >= def.startDate && (!def.endDate || ds <= def.endDate)) {
 								task.recurringOriginalDate = ds
@@ -141,9 +143,9 @@ export function useRecurringTasks(
 		}
 
 		// Check day slots: recurring tasks moved to a different day need an exception on original date
-		for (let i = 0; i < ALL_KEYS.length; i++) {
-			const day = ALL_KEYS[i]
-			const dateStr = toDateStr(dates[i])
+		for (const date of dates) {
+			const day: DayKey = getDayKeyOfDate(date)
+			const dateStr = toDateStr(date)
 			for (const task of weekData.value.days[day]) {
 				if (!task.recurringSourceId) {
 					continue

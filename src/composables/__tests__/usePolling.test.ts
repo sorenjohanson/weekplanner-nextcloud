@@ -4,7 +4,8 @@ import axios from '@nextcloud/axios'
 import { getCapabilities } from '@nextcloud/capabilities'
 import { listen } from '@nextcloud/notify_push'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { getViewBuckets } from '../../utils/dateUtils'
 import { emptyWeek } from '../../utils/weekData'
 import { usePolling } from '../usePolling'
 
@@ -29,6 +30,8 @@ const mockGetCapabilities = vi.mocked(getCapabilities)
 
 const YEAR = 2026
 const WEEK = 12
+// Monday Mar 16 2026 → ISO week 12, single bucket (firstDay=Mon default).
+const VIEW_START = new Date(2026, 2, 16)
 
 class FakeWebSocketSuccess {
 	onopen: (() => void) | null = null
@@ -61,15 +64,18 @@ function setup(overrides: {
 	const loadWeek = vi.fn().mockResolvedValue(undefined)
 	const loadCustomColumns = vi.fn().mockResolvedValue(undefined)
 
+	const viewStart = ref(new Date(VIEW_START))
+	const bucketKeys = computed(() => getViewBuckets(viewStart.value))
+
 	const polling = usePolling({
-		currentYear: ref(YEAR),
-		currentWeek: ref(WEEK),
+		bucketKeys,
 		weekData: ref(emptyWeek()),
 		editingTask: ref(overrides.editingTask ?? null),
 		loadWeek,
 		loadCustomColumns,
 		materializeRecurringTasks: vi.fn(),
 		applyCustomColumnsData: vi.fn(),
+		applyBucketData: vi.fn(),
 		isWeekSaveIdle: overrides.isWeekSaveIdle ?? (() => true),
 		isWeekLoadIdle: overrides.isWeekLoadIdle ?? (() => true),
 		isCustomSaveIdle: overrides.isCustomSaveIdle ?? (() => true),
@@ -212,16 +218,18 @@ describe('usePolling', () => {
 				},
 			})
 			const materializeRecurringTasks = vi.fn()
+			const viewStart = ref(new Date(VIEW_START))
+			const bucketKeys = computed(() => getViewBuckets(viewStart.value))
 
 			const polling = usePolling({
-				currentYear: ref(YEAR),
-				currentWeek: ref(WEEK),
+				bucketKeys,
 				weekData,
 				editingTask: ref(null),
 				loadWeek: vi.fn(),
 				loadCustomColumns: vi.fn(),
 				materializeRecurringTasks,
 				applyCustomColumnsData: vi.fn(),
+				applyBucketData: vi.fn(),
 				isWeekSaveIdle: () => true,
 				isWeekLoadIdle: () => true,
 				isCustomSaveIdle: () => true,

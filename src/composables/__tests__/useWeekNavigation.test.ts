@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useWeekNavigation } from '../useWeekNavigation'
 
+vi.mock('@nextcloud/l10n', () => ({
+	getLocale: () => 'en-US',
+}))
+
 describe('useWeekNavigation', () => {
 	beforeEach(() => {
 		// Fix "today" to Wednesday 2026-03-18, which is ISO week 12

@@ -1,25 +1,26 @@
-import type { Ref } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
 import type { WeekData } from '../types'
+import type { ViewBucket } from '../utils/dateUtils'
 
 import axios from '@nextcloud/axios'
 import { getCapabilities } from '@nextcloud/capabilities'
 import { generateUrl } from '@nextcloud/router'
-import { normalizeWeekData } from '../utils/weekData'
+import { bucketKey } from '../utils/dateUtils'
 
 interface PollDeps {
-	currentYear: Ref<number>
-	currentWeek: Ref<number>
+	bucketKeys: ComputedRef<ViewBucket[]>
 	weekData: Ref<WeekData>
 	editingTask: Ref<{ day: string, taskId: string } | null>
 	loadWeek: () => Promise<void>
 	loadCustomColumns: () => Promise<void>
 	materializeRecurringTasks: () => void
 	applyCustomColumnsData: (data: unknown) => void
+	applyBucketData: (weekKey: string, data: WeekData) => void
 	isWeekSaveIdle: () => boolean
 	isWeekLoadIdle: () => boolean
 	isCustomSaveIdle: () => boolean
-	getWeekKnownUpdatedAt: () => number
-	setWeekKnownUpdatedAt: (val: number) => void
+	getWeekKnownUpdatedAt: (weekKey: string) => number
+	setWeekKnownUpdatedAt: (weekKey: string, val: number) => void
 	getCustomKnownUpdatedAt: () => number
 	setCustomKnownUpdatedAt: (val: number) => void
 }
@@ -93,7 +94,8 @@ function probeWebSocket(url: string, timeoutMs = WS_PROBE_TIMEOUT_MS): Promise<b
 }
 
 export function usePolling(deps: PollDeps) {
-	let weekPollAbortController: AbortController | null = null
+	// One in-flight long-poll per bucket. Keyed by `${year}-${week}`.
+	const weekPollAbortControllers = new Map<string, AbortController>()
 	let shouldPollWeek = false
 	let customPollAbortController: AbortController | null = null
 	let shouldPollCustom = false
@@ -103,29 +105,37 @@ export function usePolling(deps: PollDeps) {
 
 	function stopWeekPoll() {
 		shouldPollWeek = false
-		weekPollAbortController?.abort()
-		weekPollAbortController = null
+		for (const c of weekPollAbortControllers.values()) {
+			c.abort()
+		}
+		weekPollAbortControllers.clear()
 	}
 
-	async function longPollWeek() {
+	async function pollBucket(year: number, week: number) {
+		const key = bucketKey(year, week)
 		if (!shouldPollWeek) {
 			return
 		}
+		// If the visible window no longer includes this bucket, stop polling it.
+		if (!deps.bucketKeys.value.some((b) => b.weekKey === key)) {
+			weekPollAbortControllers.delete(key)
+			return
+		}
 		const controller = new AbortController()
-		weekPollAbortController = controller
+		weekPollAbortControllers.set(key, controller)
 		try {
 			const url = generateUrl('/apps/weekplanner/week/{year}/{week}/poll', {
-				year: String(deps.currentYear.value),
-				week: String(deps.currentWeek.value),
+				year: String(year),
+				week: String(week),
 			})
 			const response = await axios.get<{ changed: boolean, updatedAt: number, data?: unknown }>(
-				`${url}?since=${deps.getWeekKnownUpdatedAt()}`,
+				`${url}?since=${deps.getWeekKnownUpdatedAt(key)}`,
 				{ signal: controller.signal, timeout: 35_000 },
 			)
 			if (response.data.changed && response.data.data !== undefined && response.data.data !== null) {
 				if (deps.isWeekSaveIdle() && !deps.editingTask.value) {
-					deps.setWeekKnownUpdatedAt(response.data.updatedAt)
-					deps.weekData.value = normalizeWeekData(response.data.data)
+					deps.setWeekKnownUpdatedAt(key, response.data.updatedAt)
+					deps.applyBucketData(key, response.data.data as WeekData)
 					deps.materializeRecurringTasks()
 				}
 			}
@@ -135,7 +145,19 @@ export function usePolling(deps: PollDeps) {
 			}
 			await new Promise((resolve) => setTimeout(resolve, 5_000))
 		}
-		longPollWeek()
+		pollBucket(year, week)
+	}
+
+	function longPollWeek() {
+		if (!shouldPollWeek) {
+			return
+		}
+		// Spin up one long-poll loop per bucket in the current visible window.
+		for (const bucket of deps.bucketKeys.value) {
+			if (!weekPollAbortControllers.has(bucket.weekKey)) {
+				pollBucket(bucket.year, bucket.week)
+			}
+		}
 	}
 
 	// --- Custom columns polling ---
@@ -210,7 +232,8 @@ export function usePolling(deps: PollDeps) {
 				if (!body) {
 					return
 				}
-				if (Number(body.year) === deps.currentYear.value && Number(body.week) === deps.currentWeek.value) {
+				const key = bucketKey(Number(body.year), Number(body.week))
+				if (deps.bucketKeys.value.some((b) => b.weekKey === key)) {
 					if (deps.isWeekSaveIdle() && deps.isWeekLoadIdle() && !deps.editingTask.value) {
 						deps.loadWeek()
 					}

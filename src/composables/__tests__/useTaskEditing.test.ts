@@ -2,22 +2,21 @@ import type { CustomColumn, RecurringTaskDefinition, Task } from '../../types'
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { computed, ref } from 'vue'
-import { getWeekDates } from '../../utils/dateUtils'
+import { getViewDates } from '../../utils/dateUtils'
 import { emptyWeek } from '../../utils/weekData'
 import { useTaskEditing } from '../useTaskEditing'
 
-const TEST_YEAR = 2026
-const TEST_WEEK = 12
+// Week 12 of 2026: Monday Mar 16 – Sunday Mar 22.
+const VIEW_START = new Date(2026, 2, 16)
 
 function setup(options: {
 	weekOverride?: ReturnType<typeof emptyWeek>
 	recurringDefs?: RecurringTaskDefinition[]
 	columns?: CustomColumn[]
 } = {}) {
-	const currentYear = ref(TEST_YEAR)
-	const currentWeek = ref(TEST_WEEK)
+	const viewStart = ref(new Date(VIEW_START))
+	const viewDates = computed(() => getViewDates(viewStart.value))
 	const weekData = ref(options.weekOverride ?? emptyWeek())
-	const weekDates = computed(() => getWeekDates(currentYear.value, currentWeek.value))
 	const recurringTasks = ref<RecurringTaskDefinition[]>(options.recurringDefs ?? [])
 	const customColumns = ref<CustomColumn[]>(options.columns ?? [])
 	const debouncedSave = vi.fn()
@@ -32,10 +31,9 @@ function setup(options: {
 	const stashTaskForNextWeek = vi.fn()
 
 	const editing = useTaskEditing({
-		currentYear,
-		currentWeek,
+		viewStart,
+		viewDates,
 		weekData,
-		weekDates,
 		recurringTasks,
 		customColumns,
 		debouncedSave,
@@ -64,6 +62,7 @@ function setup(options: {
 		deleteCustomTask,
 		materializeRecurringTasks,
 		handleDragChange,
+		stashTaskForNextWeek,
 	}
 }
 

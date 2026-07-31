@@ -1,28 +1,27 @@
 import type { RecurringTaskDefinition, WeekData } from '../../types'
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { getViewDates } from '../../utils/dateUtils'
 import { emptyWeek } from '../../utils/weekData'
 import { useRecurringTasks } from '../useRecurringTasks'
 
 // Week 12 of 2026: Monday Mar 16 - Sunday Mar 22
-const TEST_YEAR = 2026
-const TEST_WEEK = 12
+const VIEW_START = new Date(2026, 2, 16)
 
 function setup(defs: RecurringTaskDefinition[] = [], weekOverride?: WeekData) {
-	const currentYear = ref(TEST_YEAR)
-	const currentWeek = ref(TEST_WEEK)
+	const viewStart = ref(new Date(VIEW_START))
+	const viewDates = computed(() => getViewDates(viewStart.value))
 	const weekData = ref(weekOverride ?? emptyWeek())
 	const recurringTasks = ref(defs)
 	const debouncedSave = vi.fn()
 	const { materializeRecurringTasks } = useRecurringTasks(
-		currentYear,
-		currentWeek,
+		viewDates,
 		weekData,
 		recurringTasks,
 		debouncedSave,
 	)
-	return { currentYear, currentWeek, weekData, recurringTasks, debouncedSave, materializeRecurringTasks }
+	return { viewStart, weekData, recurringTasks, debouncedSave, materializeRecurringTasks }
 }
 
 describe('useRecurringTasks', () => {
