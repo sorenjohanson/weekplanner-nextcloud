@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { DayKey, Recurrence, RecurringDeleteMode, TaskColor } from '../types'
 
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { ChromePicker } from 'vue-color'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import { TASK_COLORS } from '../types'
+
+import 'vue-color/style.css'
 
 export interface MoveDayOption {
 	key: DayKey
@@ -23,7 +26,7 @@ export interface MoveColumnOption {
 	title: string
 }
 
-defineProps<{
+const props = defineProps<{
 	title: string
 	notes: string
 	recurrence: Recurrence
@@ -48,6 +51,24 @@ const emit = defineEmits<{
 
 const titleInput = ref<HTMLInputElement | null>(null)
 const showRecurringDeleteOptions = ref(false)
+const showCustomColor = ref(false)
+
+const isCustomColor = computed(() => props.color.startsWith('#'))
+
+const customColorValue = computed(() => (isCustomColor.value ? props.color : '#E8D4FF'))
+
+function toggleCustomColor() {
+	showCustomColor.value = !showCustomColor.value
+}
+
+function selectPresetColor(value: TaskColor) {
+	showCustomColor.value = false
+	emit('update:color', value)
+}
+
+function selectCustomColor(value: string) {
+	emit('update:color', value.toLowerCase() as TaskColor)
+}
 
 function handleDelete() {
 	showRecurringDeleteOptions.value = true
@@ -123,7 +144,7 @@ onMounted(() => {
 						class="edit-color-swatch edit-color-none"
 						:class="{ selected: !color }"
 						title="No color"
-						@click="$emit('update:color', '')">
+						@click="selectPresetColor('')">
 						<svg xmlns="http://www.w3.org/2000/svg"
 							viewBox="0 0 24 24"
 							width="14"
@@ -139,7 +160,23 @@ onMounted(() => {
 						:class="{ selected: color === c.value }"
 						:style="{ backgroundColor: c.hex }"
 						:title="c.label"
-						@click="$emit('update:color', c.value)" />
+						@click="selectPresetColor(c.value)" />
+					<button
+						type="button"
+						class="edit-color-swatch edit-color-custom"
+						:class="{ selected: isCustomColor || showCustomColor }"
+						title="Custom color"
+						@click="toggleCustomColor">
+						<span
+							class="edit-color-custom-icon"
+							:style="isCustomColor ? { background: color } : undefined" />
+					</button>
+				</div>
+				<div v-if="showCustomColor" class="edit-custom-color">
+					<ChromePicker
+						:modelValue="customColorValue"
+						disableAlpha
+						@update:modelValue="selectCustomColor" />
 				</div>
 				<label class="edit-label edit-label-move">Move to</label>
 				<div class="edit-move-row">
@@ -360,6 +397,28 @@ onMounted(() => {
 .edit-color-none {
 	background-color: var(--color-main-background);
 	color: var(--color-text-maxcontrast);
+}
+
+.edit-color-custom {
+	background-color: var(--color-main-background);
+}
+
+.edit-color-custom-icon {
+	width: 100%;
+	height: 100%;
+	border-radius: 50%;
+	background: conic-gradient(#f44336, #ff9800, #ffeb3b, #4caf50, #2196f3, #9c27b0, #f44336);
+	pointer-events: none;
+}
+
+.edit-custom-color {
+	margin-top: 8px;
+}
+
+.edit-custom-color :deep(.vc-chrome-picker .fields .vc-input-input:hover),
+.edit-custom-color :deep(.vc-chrome-picker .fields .vc-input-input:focus),
+.edit-custom-color :deep(.vc-chrome-picker .fields .vc-input-input:active) {
+	box-shadow: inset 0 0 0 1px var(--vc-input-border);
 }
 
 .edit-label-move {

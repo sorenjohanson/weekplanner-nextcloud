@@ -82,8 +82,8 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 	/**
 	 * Find the visible-week Date whose day-of-week matches `day`.
 	 *
-	 * @param day
-	 * @param dates
+	 * @param day day key to match
+	 * @param dates dates to search
 	 */
 	function dateForDay(day: DayKey, dates: Date[] = viewDates.value): Date | undefined {
 		return dates.find((d) => getDayKeyOfDate(d) === day)
