@@ -51,7 +51,7 @@ export function toDateStr(d: Date): string {
  * 0=Monday..6=Sunday — canonical storage index for day-of-week, decoupled from
  * the user's firstDayOfWeek display order. Used by recurring task definitions.
  *
- * @param date
+ * @param date the date to convert
  */
 export function dayOfWeekMonFirst(date: Date): number {
 	// JS getDay() returns 0=Sunday..6=Saturday.
@@ -63,7 +63,7 @@ export function dayOfWeekMonFirst(date: Date): number {
  * DayKey corresponding to the actual day of week of the given date. Used to
  * locate a date's task list inside an ISO-week-keyed bucket.
  *
- * @param date
+ * @param date the date to look up
  */
 export function getDayKeyOfDate(date: Date): DayKey {
 	return DAY_KEYS_MON_FIRST[dayOfWeekMonFirst(date)]
@@ -73,8 +73,8 @@ export function getDayKeyOfDate(date: Date): DayKey {
  * Latest occurrence of `firstDay` (0=Sun..6=Sat in JS convention, matching
  * Nextcloud's stored preference) on or before `date`, at local midnight.
  *
- * @param date
- * @param firstDay
+ * @param date the reference date
+ * @param firstDay preferred first day of week (0=Sun..6=Sat)
  */
 export function getViewStart(date: Date, firstDay: number): Date {
 	const normalized = ((firstDay % 7) + 7) % 7
@@ -87,7 +87,7 @@ export function getViewStart(date: Date, firstDay: number): Date {
 /**
  * 7 consecutive dates starting at `viewStart`.
  *
- * @param viewStart
+ * @param viewStart the first date of the view
  */
 export function getViewDates(viewStart: Date): Date[] {
 	const dates: Date[] = []
@@ -114,7 +114,7 @@ export interface ViewBucket {
  * chronological order — 1 when the view aligns with an ISO week (firstDay
  * = Monday), 2 otherwise.
  *
- * @param viewStart
+ * @param viewStart the first date of the view
  */
 export function getViewBuckets(viewStart: Date): ViewBucket[] {
 	const dates = getViewDates(viewStart)

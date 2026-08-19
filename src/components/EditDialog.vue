@@ -5,6 +5,7 @@ import { computed, onMounted, ref } from 'vue'
 import { ChromePicker } from 'vue-color'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import { TASK_COLORS } from '../types'
+
 import 'vue-color/style.css'
 
 export interface MoveDayOption {
@@ -173,9 +174,9 @@ onMounted(() => {
 				</div>
 				<div v-if="showCustomColor" class="edit-custom-color">
 					<ChromePicker
-						:model-value="customColorValue"
-						disable-alpha
-						@update:model-value="selectCustomColor" />
+						:modelValue="customColorValue"
+						disableAlpha
+						@update:modelValue="selectCustomColor" />
 				</div>
 				<label class="edit-label edit-label-move">Move to</label>
 				<div class="edit-move-row">

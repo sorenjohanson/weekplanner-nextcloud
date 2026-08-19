@@ -145,8 +145,8 @@ export function useWeekPersistence(
 	 * Replace an entire bucket's cached data with `data` and re-assemble the
 	 * merged view. Used by polling / notify_push to apply external updates.
 	 *
-	 * @param weekKey
-	 * @param data
+	 * @param weekKey the ISO week bucket key
+	 * @param data the full week data to cache
 	 */
 	function applyBucketData(weekKey: string, data: WeekData) {
 		bucketCache.set(weekKey, normalizeWeekData(data))
