@@ -13,6 +13,9 @@ defineEmits<{
 }>()
 
 function colorHex(color: string): string | undefined {
+	if (color.startsWith('#')) {
+		return color
+	}
 	return TASK_COLORS.find((c) => c.value === color)?.hex
 }
 </script>
