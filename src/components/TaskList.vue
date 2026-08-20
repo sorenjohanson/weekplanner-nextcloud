@@ -12,7 +12,7 @@ defineProps<{
 defineEmits<{
 	'update:tasks': [tasks: Task[]]
 	'update:newTaskText': [text: string]
-	change: []
+	change: [evt: { added?: { element?: Task }, removed?: { element?: Task } }]
 	edit: [task: Task]
 	toggleDone: [taskId: string]
 	addTask: []
@@ -29,7 +29,7 @@ defineEmits<{
 			:delay="200"
 			:delayOnTouchOnly="true"
 			@update:modelValue="$emit('update:tasks', $event)"
-			@change="$emit('change')">
+			@change="$emit('change', $event)">
 			<template #item="{ element }: { element: Task }">
 				<TaskItem
 					:task="element"

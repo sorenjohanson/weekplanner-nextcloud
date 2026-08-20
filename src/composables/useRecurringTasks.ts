@@ -1,8 +1,57 @@
 import type { ComputedRef, Ref } from 'vue'
-import type { CustomColumn, DayKey, RecurringTaskDefinition, WeekData } from '../types'
+import type { CustomColumn, DayKey, RecurringTaskDefinition, Task, WeekData } from '../types'
 
 import { dayOfWeekMonFirst, getDayKeyOfDate, toDateStr } from '../utils/dateUtils'
 import { randomId } from '../utils/randomId'
+
+/**
+ * First date within `dates` that matches a definition's recurrence pattern and
+ * falls inside its start/end range. For weekly/monthly definitions this is the
+ * single day the instance should have been generated on; it is used to recover
+ * an instance's home date when `recurringOriginalDate` is missing.
+ *
+ * @param def the recurrence definition to match
+ * @param dates the dates to search, in chronological order
+ */
+function findHomeDate(def: RecurringTaskDefinition, dates: Date[]): string | undefined {
+	for (const date of dates) {
+		const ds = toDateStr(date)
+		if (ds < def.startDate) {
+			continue
+		}
+		if (def.endDate && ds > def.endDate) {
+			continue
+		}
+		let matches = false
+		if (def.recurrence === 'daily') {
+			matches = true
+		} else if (def.recurrence === 'weekly') {
+			matches = dayOfWeekMonFirst(date) === def.dayOfWeek
+		} else if (def.recurrence === 'monthly') {
+			matches = date.getDate() === def.dayOfMonth
+		}
+		if (matches) {
+			return ds
+		}
+	}
+	return undefined
+}
+
+function dedupeRecurringInstances(tasks: Task[]): { tasks: Task[], changed: boolean } {
+	const seen = new Set<string>()
+	const deduped: Task[] = []
+	for (let i = tasks.length - 1; i >= 0; i -= 1) {
+		const task = tasks[i]
+		if (task.recurringSourceId) {
+			if (seen.has(task.recurringSourceId)) {
+				continue
+			}
+			seen.add(task.recurringSourceId)
+		}
+		deduped.unshift(task)
+	}
+	return { tasks: deduped, changed: deduped.length !== tasks.length }
+}
 
 export function useRecurringTasks(
 	viewDates: ComputedRef<Date[]>,
@@ -49,6 +98,10 @@ export function useRecurringTasks(
 				}
 				return true
 			})
+			const deduped = dedupeRecurringInstances(weekData.value.days[day])
+			if (deduped.changed) {
+				weekData.value.days[day] = deduped.tasks
+			}
 			if (weekData.value.days[day].length !== before) {
 				changed = true
 			}
@@ -117,22 +170,7 @@ export function useRecurringTasks(
 						continue
 					}
 					if (!task.recurringOriginalDate) {
-						for (const date of dates) {
-							const ds = toDateStr(date)
-							const canonicalDow = dayOfWeekMonFirst(date)
-							let matches = false
-							if (def.recurrence === 'daily') {
-								matches = true
-							} else if (def.recurrence === 'weekly') {
-								matches = canonicalDow === def.dayOfWeek
-							} else if (def.recurrence === 'monthly') {
-								matches = date.getDate() === def.dayOfMonth
-							}
-							if (matches && ds >= def.startDate && (!def.endDate || ds <= def.endDate)) {
-								task.recurringOriginalDate = ds
-								break
-							}
-						}
+						task.recurringOriginalDate = findHomeDate(def, dates)
 					}
 					if (task.recurringOriginalDate && !def.exceptionDates.includes(task.recurringOriginalDate)) {
 						def.exceptionDates.push(task.recurringOriginalDate)
@@ -146,6 +184,11 @@ export function useRecurringTasks(
 		for (const date of dates) {
 			const day: DayKey = getDayKeyOfDate(date)
 			const dateStr = toDateStr(date)
+			const deduped = dedupeRecurringInstances(weekData.value.days[day])
+			if (deduped.changed) {
+				weekData.value.days[day] = deduped.tasks
+				definitionsChanged = true
+			}
 			for (const task of weekData.value.days[day]) {
 				if (!task.recurringSourceId) {
 					continue
@@ -155,14 +198,13 @@ export function useRecurringTasks(
 					continue
 				}
 				if (!task.recurringOriginalDate) {
-					task.recurringOriginalDate = dateStr
+					task.recurringOriginalDate = findHomeDate(def, dates) ?? dateStr
 				}
 				if (task.recurringOriginalDate !== dateStr) {
 					if (!def.exceptionDates.includes(task.recurringOriginalDate)) {
 						def.exceptionDates.push(task.recurringOriginalDate)
 						definitionsChanged = true
 					}
-					task.recurringOriginalDate = dateStr
 				} else {
 					const idx = def.exceptionDates.indexOf(dateStr)
 					if (idx !== -1) {
@@ -176,8 +218,36 @@ export function useRecurringTasks(
 		return definitionsChanged
 	}
 
+	/**
+	 * Re-anchor a recurring definition so the whole series follows a task that
+	 * was just dragged to `targetDay`. Mirrors the edit-dialog picker's "all
+	 * occurrences" move: update startDate / dayOfWeek / dayOfMonth, drop stale
+	 * exceptions before the new anchor, and stamp the moved instance with its
+	 * new home date.
+	 *
+	 * @param task the moved recurring instance
+	 * @param targetDay the day key the instance was dropped onto
+	 */
+	function handleDragChangeAll(task: Task, targetDay: DayKey) {
+		const def = recurringTasks.value.find((d) => d.id === task.recurringSourceId)
+		if (!def) {
+			return
+		}
+		const targetDate = viewDates.value.find((d) => getDayKeyOfDate(d) === targetDay)
+		if (!targetDate) {
+			return
+		}
+		const targetDateStr = toDateStr(targetDate)
+		def.startDate = targetDateStr
+		def.dayOfWeek = dayOfWeekMonFirst(targetDate)
+		def.dayOfMonth = targetDate.getDate()
+		def.exceptionDates = def.exceptionDates.filter((d) => d > targetDateStr)
+		task.recurringOriginalDate = targetDateStr
+	}
+
 	return {
 		materializeRecurringTasks,
 		handleDragChange,
+		handleDragChangeAll,
 	}
 }

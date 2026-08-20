@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { DayKey, Recurrence, RecurringDeleteMode, TaskColor } from '../types'
+import type { DayKey, Recurrence, RecurringDeleteMode, RecurringMoveMode, TaskColor } from '../types'
 
 import { computed, onMounted, ref } from 'vue'
 import { ChromePicker } from 'vue-color'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import MoveScopeDialog from './MoveScopeDialog.vue'
 import { TASK_COLORS } from '../types'
 
 import 'vue-color/style.css'
@@ -45,13 +46,18 @@ const emit = defineEmits<{
 	'update:color': [value: TaskColor]
 	save: []
 	delete: [mode?: RecurringDeleteMode]
-	move: [target: DayKey | string]
-	moveToNextWeek: [targetDay: DayKey]
+	move: [target: DayKey | string, mode?: RecurringMoveMode]
+	moveToNextWeek: [targetDay: DayKey, mode?: RecurringMoveMode]
 }>()
+
+type PendingMoveKind = 'same-week' | 'next-week'
 
 const titleInput = ref<HTMLInputElement | null>(null)
 const showRecurringDeleteOptions = ref(false)
 const showCustomColor = ref(false)
+const showMoveScopeOptions = ref(false)
+const pendingMoveTarget = ref<DayKey | string | null>(null)
+const pendingMoveKind = ref<PendingMoveKind | null>(null)
 
 const isCustomColor = computed(() => props.color.startsWith('#'))
 
@@ -77,6 +83,48 @@ function handleDelete() {
 function deleteWithMode(mode: RecurringDeleteMode) {
 	showRecurringDeleteOptions.value = false
 	emit('delete', mode)
+}
+
+function requestMove(target: DayKey | string) {
+	if (props.isRecurring) {
+		pendingMoveTarget.value = target
+		pendingMoveKind.value = 'same-week'
+		showMoveScopeOptions.value = true
+		return
+	}
+	emit('move', target)
+}
+
+function requestNextWeekMove(targetDay: DayKey) {
+	if (props.isRecurring) {
+		pendingMoveTarget.value = targetDay
+		pendingMoveKind.value = 'next-week'
+		showMoveScopeOptions.value = true
+		return
+	}
+	emit('moveToNextWeek', targetDay)
+}
+
+function moveWithMode(mode: RecurringMoveMode) {
+	const target = pendingMoveTarget.value
+	const kind = pendingMoveKind.value
+	showMoveScopeOptions.value = false
+	pendingMoveTarget.value = null
+	pendingMoveKind.value = null
+	if (!target) {
+		return
+	}
+	if (kind === 'next-week') {
+		emit('moveToNextWeek', target as DayKey, mode)
+	} else {
+		emit('move', target, mode)
+	}
+}
+
+function cancelMove() {
+	showMoveScopeOptions.value = false
+	pendingMoveTarget.value = null
+	pendingMoveKind.value = null
 }
 
 onMounted(() => {
@@ -188,7 +236,7 @@ onMounted(() => {
 						:class="{ current: currentLocation === d.key, today: d.isToday }"
 						:disabled="currentLocation === d.key"
 						:title="d.date"
-						@click="emit('move', d.key)">
+						@click="requestMove(d.key)">
 						{{ d.label }}
 					</button>
 				</div>
@@ -212,7 +260,7 @@ onMounted(() => {
 						type="button"
 						class="edit-move-chip edit-move-chip-next-week"
 						:title="d.date"
-						@click="emit('moveToNextWeek', d.key)">
+						@click="requestNextWeekMove(d.key)">
 						{{ d.label }}
 					</button>
 				</div>
@@ -249,6 +297,10 @@ onMounted(() => {
 				</div>
 			</div>
 		</div>
+		<MoveScopeDialog
+			v-if="showMoveScopeOptions"
+			@choose="moveWithMode"
+			@cancel="cancelMove" />
 	</div>
 </template>
 

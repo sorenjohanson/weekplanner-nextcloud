@@ -1,5 +1,5 @@
 import type { ComputedRef, Ref } from 'vue'
-import type { CustomColumn, DayKey, Recurrence, RecurringDeleteMode, RecurringTaskDefinition, Task, TaskColor, WeekData } from '../types'
+import type { CustomColumn, DayKey, Recurrence, RecurringDeleteMode, RecurringMoveMode, RecurringTaskDefinition, Task, TaskColor, WeekData } from '../types'
 
 import { computed, nextTick, ref } from 'vue'
 import { ALL_KEYS } from '../types'
@@ -119,6 +119,7 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 			})
 			task.recurringSourceId = defId
 			task.recurrence = newRecurrence
+			task.recurringOriginalDate = dateStr
 			debouncedSaveCustomColumns()
 			materializeRecurringTasks()
 		} else if (newRecurrence && oldSourceId) {
@@ -286,16 +287,17 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 
 	// Picker-driven move from the edit dialog.
 	//
-	// For a recurring task moved between two day slots we intentionally diverge
-	// from drag semantics: drag adds an exception so future weeks keep the old
-	// pattern, but picker users explicitly chose "Sunday" — they expect the
-	// recurrence to follow. So we update the definition's startDate / dayOfWeek
-	// / dayOfMonth and drop now-stale exceptions before startDate.
+	// For a recurring task moved between two day slots, `mode` decides the
+	// scope. "all" (the default) re-anchors the definition so the recurrence
+	// follows the new day; "this" moves only this occurrence and records an
+	// exception on its original date, matching drag semantics. Either way we
+	// keep the moved instance's recurringOriginalDate pointing at its original
+	// home date so materialization preserves it.
 	//
 	// All other paths (non-recurring, or recurring involving a custom column)
 	// reuse handleDragChange so cross-list bookkeeping (originalDate, exception
 	// dates for moved instances) stays consistent with the drag flow.
-	function moveEditingTask(target: DayKey | string) {
+	function moveEditingTask(target: DayKey | string, mode: RecurringMoveMode = 'all') {
 		if (!editingTask.value) {
 			return
 		}
@@ -329,8 +331,9 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 		const sourceIsDay = !isCustomColumn(sourceDay)
 		const targetIsDay = !isCustomColumn(target)
 		const isRecurringDayToDay = !!task.recurringSourceId && sourceIsDay && targetIsDay
+		const moveWholeSeries = isRecurringDayToDay && mode === 'all'
 
-		if (isRecurringDayToDay) {
+		if (moveWholeSeries) {
 			const def = recurringTasks.value.find((d) => d.id === task!.recurringSourceId)
 			const targetDate = dateForDay(target as DayKey)
 			if (def && targetDate) {
@@ -338,7 +341,7 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 				def.startDate = targetDateStr
 				def.dayOfWeek = dayOfWeekMonFirst(targetDate)
 				def.dayOfMonth = targetDate.getDate()
-				def.exceptionDates = def.exceptionDates.filter((d) => d >= targetDateStr)
+				def.exceptionDates = def.exceptionDates.filter((d) => d > targetDateStr)
 				task.recurringOriginalDate = targetDateStr
 			}
 		}
@@ -358,7 +361,7 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 			}
 		}
 
-		if (!isRecurringDayToDay) {
+		if (!moveWholeSeries) {
 			handleDragChange()
 		}
 		materializeRecurringTasks()
@@ -386,7 +389,12 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 	// user's firstDayOfWeek aligns with ISO weeks. We resolve the target date
 	// inside that shifted window, derive its ISO-week storage bucket, and hand
 	// off to the cross-week stasher.
-	function moveEditingTaskToNextWeek(targetDay: DayKey) {
+	//
+	// For recurring tasks, `mode` decides the scope: "this" moves only this
+	// occurrence (recording an exception on its home date so the original day
+	// does not re-materialize) while "all" re-anchors the definition so the
+	// series runs from next week's target day forward.
+	function moveEditingTaskToNextWeek(targetDay: DayKey, mode: RecurringMoveMode = 'this') {
 		if (!editingTask.value) {
 			return
 		}
@@ -414,10 +422,6 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 			return
 		}
 
-		// Persist the current week without the moved task
-		flushSaveTimeout()
-		saveWeekNow()
-
 		// Resolve target date in the next visible week's chronological dates
 		// and find which ISO-week bucket it belongs to.
 		const nextViewStart = new Date(viewStart.value)
@@ -429,6 +433,48 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 			return
 		}
 		const { year, week } = getISOWeek(targetDate)
+		const targetDateStr = toDateStr(targetDate)
+
+		// Recurring bookkeeping: without this the original day re-materializes
+		// on the next load, so the "move" silently reverts. `all` also shifts
+		// the definition anchor so the whole series follows.
+		let definitionsChanged = false
+		if (task.recurringSourceId) {
+			const def = recurringTasks.value.find((d) => d.id === task!.recurringSourceId)
+			if (def) {
+				if (mode === 'all') {
+					def.startDate = targetDateStr
+					def.dayOfWeek = dayOfWeekMonFirst(targetDate)
+					def.dayOfMonth = targetDate.getDate()
+					def.exceptionDates = def.exceptionDates.filter((d) => d > targetDateStr)
+					task.recurringOriginalDate = targetDateStr
+					definitionsChanged = true
+				} else {
+					// Add an exception for the instance's home date so the
+					// source day does not spawn a new occurrence when we
+					// return to this week.
+					const originalDate = task.recurringOriginalDate
+						?? (isCustomColumn(sourceDay) ? undefined : getTaskDate(sourceDay as DayKey))
+					if (originalDate && !def.exceptionDates.includes(originalDate)) {
+						def.exceptionDates.push(originalDate)
+						definitionsChanged = true
+					}
+					if (originalDate && !task.recurringOriginalDate) {
+						task.recurringOriginalDate = originalDate
+					}
+				}
+			}
+		}
+
+		// Persist the current week without the moved task, and the definitions
+		// if we touched them. Order matters: flush first so the debounced save
+		// doesn't stomp our synchronous writes.
+		flushSaveTimeout()
+		saveWeekNow()
+		if (definitionsChanged) {
+			flushCustomSaveTimeout()
+			saveCustomColumnsNow()
+		}
 
 		deps.stashTaskForNextWeek(task, targetDay, year, week)
 

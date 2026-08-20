@@ -8,6 +8,7 @@ import NcAppContent from '@nextcloud/vue/components/NcAppContent'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcContent from '@nextcloud/vue/components/NcContent'
 import EditDialog from './components/EditDialog.vue'
+import MoveScopeDialog from './components/MoveScopeDialog.vue'
 import TaskList from './components/TaskList.vue'
 import TaskOverflowMenu from './components/TaskOverflowMenu.vue'
 import { useCustomColumns } from './composables/useCustomColumns'
@@ -176,10 +177,54 @@ const polling = usePolling({
 // Always persist both week and custom columns: vuedraggable doesn't tell us
 // which list was involved, and saving only one side desyncs the other on
 // reload (duplicates / disappearing tasks for custom-column drags).
+//
+// A recurring task dropped onto a day needs a scope decision (this occurrence
+// vs the whole series), so we surface a confirmation dialog and defer the
+// bookkeeping until the user answers.
+const pendingRecurringMove = ref<{ task: Task, targetDay: DayKey } | null>(null)
+
+function applySingleOccurrence() {
+	recurring.handleDragChange()
+	weekPersistence.debouncedSave()
+	columns.debouncedSaveCustomColumns()
+}
+
+function confirmRecurringMove(mode: 'this' | 'all') {
+	const pending = pendingRecurringMove.value
+	pendingRecurringMove.value = null
+	if (!pending) {
+		return
+	}
+	if (mode === 'all') {
+		recurring.handleDragChangeAll(pending.task, pending.targetDay)
+		recurring.materializeRecurringTasks()
+	} else {
+		applySingleOccurrence()
+	}
+}
+
+function cancelRecurringMove() {
+	// The task is already in its new slot; fall back to single-occurrence
+	// semantics so the move stays consistent with the server on reload.
+	const pending = pendingRecurringMove.value
+	pendingRecurringMove.value = null
+	if (pending) {
+		applySingleOccurrence()
+	}
+}
+
 const { onDragChange } = useDragHandler({
 	handleDragChange: recurring.handleDragChange,
 	debouncedSave: weekPersistence.debouncedSave,
 	debouncedSaveCustomColumns: columns.debouncedSaveCustomColumns,
+	requestRecurringMove: (task, target) => {
+		if (typeof target === 'string' && !target.startsWith('custom_')) {
+			pendingRecurringMove.value = { task, targetDay: target as DayKey }
+			return
+		}
+		// Custom-column target: no whole-series option, single occurrence only.
+		applySingleOccurrence()
+	},
 })
 
 // --- Lifecycle ---
@@ -255,7 +300,7 @@ void currentWeek
 							:newTaskText="newTasks[day]"
 							@update:tasks="weekData.days[day] = $event"
 							@update:newTaskText="newTasks[day] = $event"
-							@change="onDragChange"
+							@change="onDragChange(day, $event)"
 							@edit="openEdit(day, $event)"
 							@toggleDone="toggleDone(day, $event)"
 							@addTask="addTask(day)" />
@@ -276,7 +321,7 @@ void currentWeek
 								:newTaskText="newTasks[day]"
 								@update:tasks="weekData.days[day] = $event"
 								@update:newTaskText="newTasks[day] = $event"
-								@change="onDragChange"
+								@change="onDragChange(day, $event)"
 								@edit="openEdit(day, $event)"
 								@toggleDone="toggleDone(day, $event)"
 								@addTask="addTask(day)" />
@@ -303,7 +348,7 @@ void currentWeek
 							:newTaskText="newCustomTasks[col.id]"
 							@update:tasks="col.tasks = $event"
 							@update:newTaskText="newCustomTasks[col.id] = $event"
-							@change="onDragChange"
+							@change="onDragChange(col.id, $event)"
 							@edit="openEdit(col.id, $event)"
 							@toggleDone="toggleCustomDone(col.id, $event)"
 							@addTask="addCustomTask(col.id)" />
@@ -328,8 +373,12 @@ void currentWeek
 						@update:color="editColor = $event"
 						@save="saveEdit"
 						@delete="deleteEditingTask($event)"
-						@move="moveEditingTask($event)"
-						@moveToNextWeek="moveEditingTaskToNextWeek($event)" />
+						@move="moveEditingTask"
+						@moveToNextWeek="moveEditingTaskToNextWeek" />
+					<MoveScopeDialog
+						v-if="pendingRecurringMove"
+						@choose="confirmRecurringMove"
+						@cancel="cancelRecurringMove" />
 				</Teleport>
 			</div>
 		</NcAppContent>
