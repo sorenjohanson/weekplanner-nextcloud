@@ -33,7 +33,7 @@ function makeTask(title: string): Task {
 	}
 }
 
-function setup(weekOverride?: WeekData) {
+function setup(weekOverride?: WeekData, requestRecurringMove?: (task: Task, target: string) => void) {
 	const viewStart = ref(new Date(VIEW_START))
 	const viewDates = computed(() => getViewDates(viewStart.value))
 	const weekData = ref<WeekData>(weekOverride ?? emptyWeek())
@@ -56,6 +56,7 @@ function setup(weekOverride?: WeekData) {
 		handleDragChange,
 		debouncedSave,
 		debouncedSaveCustomColumns: columns.debouncedSaveCustomColumns,
+		requestRecurringMove,
 	})
 
 	return {
@@ -83,7 +84,7 @@ describe('useDragHandler', () => {
 			// vuedraggable has already updated both lists by the time @change fires
 			customColumns.value[0].tasks.push(task)
 
-			onDragChange()
+			onDragChange('monday')
 
 			expect(debouncedSave).toHaveBeenCalled()
 			// Bug: custom columns must be saved here, otherwise on reload the
@@ -97,7 +98,7 @@ describe('useDragHandler', () => {
 			week.days.monday.push(task)
 			const { debouncedSave, debouncedSaveCustomColumnsSpy, onDragChange } = setup(week)
 
-			onDragChange()
+			onDragChange('monday')
 
 			expect(debouncedSave).toHaveBeenCalled()
 			// Bug: without saving custom columns, server keeps the stale copy
@@ -110,7 +111,7 @@ describe('useDragHandler', () => {
 			const task = makeTask('Read book')
 			customColumns.value[1].tasks.push(task)
 
-			onDragChange()
+			onDragChange('monday')
 
 			// Bug: without this save, the move reverts on reload because the
 			// week save is the only thing scheduled and it doesn't carry custom
@@ -125,7 +126,7 @@ describe('useDragHandler', () => {
 			const { debouncedSave, debouncedSaveCustomColumnsSpy, recurringTasks, onDragChange } = setup()
 			expect(recurringTasks.value).toHaveLength(0)
 
-			onDragChange()
+			onDragChange('monday')
 
 			expect(debouncedSave).toHaveBeenCalled()
 			expect(debouncedSaveCustomColumnsSpy).toHaveBeenCalled()
@@ -160,10 +161,76 @@ describe('useDragHandler', () => {
 				recurringOriginalDate: '2026-03-20',
 			})
 
-			onDragChange()
+			onDragChange('monday')
 
 			// handleDragChange records the exception so it doesn't re-materialize
 			expect(recurringTasks.value[0].exceptionDates).toContain('2026-03-20')
+			expect(debouncedSave).toHaveBeenCalled()
+			expect(debouncedSaveCustomColumnsSpy).toHaveBeenCalled()
+		})
+	})
+
+	describe('recurring move scope on cross-list drag', () => {
+		it('requests a scope decision when a recurring task is dropped onto a day', () => {
+			const requestRecurringMove = vi.fn()
+			const { debouncedSave, debouncedSaveCustomColumnsSpy, onDragChange } = setup(undefined, requestRecurringMove)
+			const task: Task = {
+				id: 'inst-1',
+				title: 'Weekly review',
+				done: false,
+				notes: '',
+				recurrence: 'weekly',
+				color: '',
+				recurringSourceId: 'def-1',
+				recurringOriginalDate: '2026-03-20',
+			}
+
+			onDragChange('wednesday', { added: { element: task } })
+
+			expect(requestRecurringMove).toHaveBeenCalledWith(task, 'wednesday')
+			// Bookkeeping is deferred until the user answers the dialog
+			expect(debouncedSave).not.toHaveBeenCalled()
+			expect(debouncedSaveCustomColumnsSpy).not.toHaveBeenCalled()
+		})
+
+		it('skips the paired removed event for a recurring cross-list move', () => {
+			const requestRecurringMove = vi.fn()
+			const { debouncedSave, debouncedSaveCustomColumnsSpy, onDragChange } = setup(undefined, requestRecurringMove)
+			const task: Task = {
+				id: 'inst-1',
+				title: 'Weekly review',
+				done: false,
+				notes: '',
+				recurrence: 'weekly',
+				color: '',
+				recurringSourceId: 'def-1',
+				recurringOriginalDate: '2026-03-20',
+			}
+
+			onDragChange('friday', { removed: { element: task } })
+
+			expect(requestRecurringMove).not.toHaveBeenCalled()
+			expect(debouncedSave).not.toHaveBeenCalled()
+			expect(debouncedSaveCustomColumnsSpy).not.toHaveBeenCalled()
+		})
+
+		it('applies single-occurrence bookkeeping when no scope callback is provided', () => {
+			const { weekData, debouncedSave, debouncedSaveCustomColumnsSpy, onDragChange } = setup()
+			const task: Task = {
+				id: 'inst-1',
+				title: 'Weekly review',
+				done: false,
+				notes: '',
+				recurrence: 'weekly',
+				color: '',
+				recurringSourceId: 'def-1',
+				recurringOriginalDate: '2026-03-20',
+			}
+			weekData.value.days.wednesday.push(task)
+
+			onDragChange('wednesday', { added: { element: task } })
+
+			// Without a scope callback the handler falls back to the standard save path
 			expect(debouncedSave).toHaveBeenCalled()
 			expect(debouncedSaveCustomColumnsSpy).toHaveBeenCalled()
 		})

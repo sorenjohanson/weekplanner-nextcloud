@@ -15,13 +15,13 @@ function setup(defs: RecurringTaskDefinition[] = [], weekOverride?: WeekData) {
 	const weekData = ref(weekOverride ?? emptyWeek())
 	const recurringTasks = ref(defs)
 	const debouncedSave = vi.fn()
-	const { materializeRecurringTasks } = useRecurringTasks(
+	const { materializeRecurringTasks, handleDragChange, handleDragChangeAll } = useRecurringTasks(
 		viewDates,
 		weekData,
 		recurringTasks,
 		debouncedSave,
 	)
-	return { viewStart, weekData, recurringTasks, debouncedSave, materializeRecurringTasks }
+	return { viewStart, weekData, recurringTasks, debouncedSave, materializeRecurringTasks, handleDragChange, handleDragChangeAll }
 }
 
 describe('useRecurringTasks', () => {
@@ -449,6 +449,290 @@ describe('useRecurringTasks', () => {
 			expect(weekData.value.days.wednesday[0].id).toBe('inst-moved')
 			// Friday should remain empty (exception date)
 			expect(weekData.value.days.friday).toHaveLength(0)
+		})
+
+		it('keeps recurringOriginalDate when a recurring task is dragged to another day', () => {
+			const def: RecurringTaskDefinition = {
+				id: 'def-drag-1',
+				title: 'Weekly Tuesday',
+				notes: '',
+				recurrence: 'weekly',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 1, // Tuesday
+				dayOfMonth: 1,
+				exceptionDates: [],
+			}
+			const { weekData, recurringTasks, materializeRecurringTasks, handleDragChange } = setup([def])
+			materializeRecurringTasks()
+
+			expect(weekData.value.days.tuesday).toHaveLength(1)
+			const task = weekData.value.days.tuesday[0]
+			expect(task.recurringOriginalDate).toBe('2026-03-17')
+
+			// vuedraggable has already moved the instance before handleDragChange runs
+			weekData.value.days.wednesday.push(task)
+			weekData.value.days.tuesday = []
+
+			handleDragChange()
+
+			// Exception targets the original Tuesday, not the new Wednesday
+			expect(recurringTasks.value[0].exceptionDates).toContain('2026-03-17')
+			// The moved instance keeps its original date so materialization can
+			// tell it apart from a stale pattern-mismatched instance.
+			expect(weekData.value.days.wednesday[0].recurringOriginalDate).toBe('2026-03-17')
+
+			// Re-materializing (e.g. navigating away and back) must not drop it
+			materializeRecurringTasks()
+			expect(weekData.value.days.wednesday).toHaveLength(1)
+		})
+
+		it('recovers the home date when a freshly-created recurring instance is dragged', () => {
+			// A task that was just set to repeat has a recurringSourceId but no
+			// recurringOriginalDate yet (the field is only stamped on newly
+			// materialized instances). Dragging it must not backfill the wrong
+			// (post-move) date, or the instance is removed on the next load.
+			const def: RecurringTaskDefinition = {
+				id: 'def-drag-2',
+				title: 'Weekly Tuesday',
+				notes: '',
+				recurrence: 'weekly',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 1, // Tuesday
+				dayOfMonth: 1,
+				exceptionDates: [],
+			}
+			const week = emptyWeek()
+			week.days.tuesday.push({
+				id: 'inst-fresh',
+				title: 'Weekly Tuesday',
+				done: false,
+				notes: '',
+				recurrence: 'weekly',
+				color: '',
+				recurringSourceId: 'def-drag-2',
+			})
+			const { weekData, recurringTasks, materializeRecurringTasks, handleDragChange } = setup([def], week)
+
+			// vuedraggable has already moved the instance before handleDragChange runs
+			const task = weekData.value.days.tuesday[0]
+			weekData.value.days.wednesday.push(task)
+			weekData.value.days.tuesday = []
+
+			handleDragChange()
+
+			expect(weekData.value.days.wednesday[0].recurringOriginalDate).toBe('2026-03-17')
+			expect(recurringTasks.value[0].exceptionDates).toContain('2026-03-17')
+
+			materializeRecurringTasks()
+			expect(weekData.value.days.wednesday).toHaveLength(1)
+			expect(weekData.value.days.tuesday).toHaveLength(0)
+		})
+
+		it('re-anchors the definition when a recurring task is dragged with "all" scope', () => {
+			const def: RecurringTaskDefinition = {
+				id: 'def-drag-all',
+				title: 'Weekly Tuesday',
+				notes: '',
+				recurrence: 'weekly',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 1, // Tuesday
+				dayOfMonth: 1,
+				exceptionDates: ['2026-03-10'],
+			}
+			const { weekData, recurringTasks, materializeRecurringTasks, handleDragChangeAll } = setup([def])
+			materializeRecurringTasks()
+
+			// vuedraggable already moved the instance before the handler runs
+			const task = weekData.value.days.tuesday[0]
+			weekData.value.days.wednesday.push(task)
+			weekData.value.days.tuesday = []
+
+			handleDragChangeAll(task, 'wednesday')
+
+			expect(recurringTasks.value[0].dayOfWeek).toBe(2) // Wednesday
+			expect(recurringTasks.value[0].startDate).toBe('2026-03-18')
+			// Stale exception before the new anchor is pruned
+			expect(recurringTasks.value[0].exceptionDates).toEqual([])
+			expect(task.recurringOriginalDate).toBe('2026-03-18')
+
+			materializeRecurringTasks()
+			expect(weekData.value.days.wednesday).toHaveLength(1)
+			expect(weekData.value.days.tuesday).toHaveLength(0)
+		})
+
+		it('survives being dragged a second time', () => {
+			const def: RecurringTaskDefinition = {
+				id: 'def-drag-3',
+				title: 'Weekly Tuesday',
+				notes: '',
+				recurrence: 'weekly',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 1, // Tuesday
+				dayOfMonth: 1,
+				exceptionDates: [],
+			}
+			const { weekData, recurringTasks, materializeRecurringTasks, handleDragChange } = setup([def])
+			materializeRecurringTasks()
+			expect(weekData.value.days.tuesday).toHaveLength(1)
+
+			// First drag: Tuesday -> Wednesday
+			const first = weekData.value.days.tuesday[0]
+			weekData.value.days.wednesday.push(first)
+			weekData.value.days.tuesday = []
+			handleDragChange()
+			expect(recurringTasks.value[0].exceptionDates).toContain('2026-03-17')
+
+			// Navigate away and back (re-materialize the persisted state)
+			materializeRecurringTasks()
+			expect(weekData.value.days.wednesday).toHaveLength(1)
+
+			// Second drag: Wednesday -> Thursday
+			const second = weekData.value.days.wednesday[0]
+			weekData.value.days.thursday.push(second)
+			weekData.value.days.wednesday = []
+			handleDragChange()
+
+			// The original home date and its exception survive the second move
+			expect(weekData.value.days.thursday[0].recurringOriginalDate).toBe('2026-03-17')
+			expect(recurringTasks.value[0].exceptionDates).toContain('2026-03-17')
+
+			materializeRecurringTasks()
+			expect(weekData.value.days.thursday).toHaveLength(1)
+			expect(weekData.value.days.tuesday).toHaveLength(0)
+		})
+
+		it('survives being dragged back to its original date in the same week', () => {
+			const def: RecurringTaskDefinition = {
+				id: 'def-drag-back',
+				title: 'Weekly Wednesday',
+				notes: '',
+				recurrence: 'weekly',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 2, // Wednesday
+				dayOfMonth: 1,
+				exceptionDates: [],
+			}
+			const { weekData, recurringTasks, materializeRecurringTasks, handleDragChange } = setup([def])
+			materializeRecurringTasks()
+			expect(weekData.value.days.wednesday).toHaveLength(1)
+
+			// First drag: Wednesday -> Thursday. This records an exception for
+			// the recurring instance's Wednesday home date.
+			const first = weekData.value.days.wednesday[0]
+			weekData.value.days.thursday.push(first)
+			weekData.value.days.wednesday = []
+			handleDragChange()
+			expect(recurringTasks.value[0].exceptionDates).toContain('2026-03-18')
+			expect(weekData.value.days.thursday[0].recurringOriginalDate).toBe('2026-03-18')
+
+			// Second drag: Thursday -> Wednesday in the same week. The exception
+			// is now stale and must be removed, or the instance is deleted on the
+			// next materialization pass.
+			const second = weekData.value.days.thursday[0]
+			weekData.value.days.wednesday.push(second)
+			weekData.value.days.thursday = []
+			handleDragChange()
+
+			expect(recurringTasks.value[0].exceptionDates).not.toContain('2026-03-18')
+			materializeRecurringTasks()
+			expect(weekData.value.days.wednesday).toHaveLength(1)
+			expect(weekData.value.days.wednesday[0].id).toBe(first.id)
+			expect(weekData.value.days.thursday).toHaveLength(0)
+		})
+
+		it('removes an anchor-date exception when dragged back with "all" scope', () => {
+			const def: RecurringTaskDefinition = {
+				id: 'def-drag-back-all',
+				title: 'Weekly Wednesday',
+				notes: '',
+				recurrence: 'weekly',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 2, // Wednesday
+				dayOfMonth: 1,
+				exceptionDates: [],
+			}
+			const { weekData, recurringTasks, materializeRecurringTasks, handleDragChange, handleDragChangeAll } = setup([def])
+			materializeRecurringTasks()
+
+			// First drag: Wednesday -> Thursday as a single occurrence, creating
+			// an exception on the original Wednesday.
+			const task = weekData.value.days.wednesday[0]
+			weekData.value.days.thursday.push(task)
+			weekData.value.days.wednesday = []
+			handleDragChange()
+			expect(recurringTasks.value[0].exceptionDates).toContain('2026-03-18')
+
+			// Second drag: Thursday -> Wednesday as all occurrences. Re-anchoring
+			// to the excepted date must clear that exception, otherwise the
+			// materialization pass deletes the task immediately.
+			weekData.value.days.wednesday.push(task)
+			weekData.value.days.thursday = []
+			handleDragChangeAll(task, 'wednesday')
+
+			expect(recurringTasks.value[0].startDate).toBe('2026-03-18')
+			expect(recurringTasks.value[0].dayOfWeek).toBe(2)
+			expect(recurringTasks.value[0].exceptionDates).not.toContain('2026-03-18')
+
+			materializeRecurringTasks()
+			expect(weekData.value.days.wednesday).toHaveLength(1)
+			expect(weekData.value.days.wednesday[0].id).toBe(task.id)
+			expect(weekData.value.days.thursday).toHaveLength(0)
+		})
+
+		it('dedupes when a moved instance is dragged back onto an already materialized original day', () => {
+			const def: RecurringTaskDefinition = {
+				id: 'def-drag-back-duplicate',
+				title: 'Weekly Wednesday',
+				notes: '',
+				recurrence: 'weekly',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 2, // Wednesday
+				dayOfMonth: 1,
+				exceptionDates: ['2026-03-18'],
+			}
+			const week = emptyWeek()
+			week.days.wednesday.push({
+				id: 'materialized-original',
+				title: 'Weekly Wednesday',
+				done: false,
+				notes: '',
+				recurrence: 'weekly',
+				color: '',
+				recurringSourceId: 'def-drag-back-duplicate',
+				recurringOriginalDate: '2026-03-18',
+			})
+			week.days.thursday.push({
+				id: 'moved-instance',
+				title: 'Weekly Wednesday',
+				done: true,
+				notes: 'keep this one',
+				recurrence: 'weekly',
+				color: '',
+				recurringSourceId: 'def-drag-back-duplicate',
+				recurringOriginalDate: '2026-03-18',
+			})
+			const { weekData, recurringTasks, materializeRecurringTasks, handleDragChange } = setup([def], week)
+
+			const moved = weekData.value.days.thursday[0]
+			weekData.value.days.wednesday.push(moved)
+			weekData.value.days.thursday = []
+			handleDragChange()
+
+			expect(recurringTasks.value[0].exceptionDates).not.toContain('2026-03-18')
+			expect(weekData.value.days.wednesday).toHaveLength(1)
+			expect(weekData.value.days.wednesday[0].id).toBe('moved-instance')
+			expect(weekData.value.days.wednesday[0].done).toBe(true)
+
+			materializeRecurringTasks()
+			expect(weekData.value.days.wednesday).toHaveLength(1)
+			expect(weekData.value.days.wednesday[0].id).toBe('moved-instance')
 		})
 
 		it('still cleans up pattern-mismatched instances that were NOT moved', () => {

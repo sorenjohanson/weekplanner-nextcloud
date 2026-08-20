@@ -564,6 +564,50 @@ describe('useTaskEditing', () => {
 			expect(weekData.value.days.sunday[0].recurringOriginalDate).toBe('2026-03-22')
 		})
 
+		it('moves a recurring task day → day with "this" scope without changing the definition', () => {
+			const defId = 'def-1'
+			const week = emptyWeek()
+			const task: Task = {
+				id: 't1',
+				title: 'Standup',
+				done: false,
+				notes: '',
+				recurrence: 'weekly',
+				color: '',
+				recurringSourceId: defId,
+				recurringOriginalDate: '2026-03-16', // Monday
+			}
+			week.days.monday.push(task)
+			const defs: RecurringTaskDefinition[] = [{
+				id: defId,
+				title: 'Standup',
+				notes: '',
+				recurrence: 'weekly',
+				startDate: '2026-03-02',
+				endDate: '',
+				dayOfWeek: 0, // Monday
+				dayOfMonth: 2,
+				exceptionDates: [],
+			}]
+			const { openEdit, moveEditingTask, weekData, recurringTasks, handleDragChange } = setup({
+				weekOverride: week,
+				recurringDefs: defs,
+			})
+
+			openEdit('monday', task)
+			moveEditingTask('sunday', 'this')
+
+			// Only this occurrence moves; the definition keeps its Monday anchor
+			expect(weekData.value.days.monday).toHaveLength(0)
+			expect(weekData.value.days.sunday).toHaveLength(1)
+			expect(recurringTasks.value[0].dayOfWeek).toBe(0)
+			expect(recurringTasks.value[0].startDate).toBe('2026-03-02')
+			// Exception bookkeeping is delegated to handleDragChange
+			expect(handleDragChange).toHaveBeenCalled()
+			// The moved instance keeps its original date so materialization keeps it
+			expect(weekData.value.days.sunday[0].recurringOriginalDate).toBe('2026-03-16')
+		})
+
 		it('is a no-op when target equals source', () => {
 			const week = emptyWeek()
 			const task: Task = { id: 't1', title: 'Stay', done: false, notes: '', recurrence: '', color: '' }
@@ -623,6 +667,135 @@ describe('useTaskEditing', () => {
 			// Sunday keeps the original instance (no duplication)
 			expect(weekData.value.days.sunday).toHaveLength(1)
 			expect(weekData.value.days.sunday[0].id).toBe('t2')
+		})
+	})
+
+	describe('moveEditingTaskToNextWeek', () => {
+		it('stashes a non-recurring task without touching recurring bookkeeping', () => {
+			const week = emptyWeek()
+			const task: Task = { id: 't1', title: 'Meeting', done: false, notes: '', recurrence: '', color: '' }
+			week.days.wednesday.push(task)
+			const {
+				openEdit,
+				moveEditingTaskToNextWeek,
+				weekData,
+				stashTaskForNextWeek,
+				saveWeekNow,
+				flushSaveTimeout,
+				saveCustomColumnsNow,
+			} = setup({ weekOverride: week })
+
+			openEdit('wednesday', task)
+			moveEditingTaskToNextWeek('wednesday')
+
+			expect(weekData.value.days.wednesday).toHaveLength(0)
+			expect(flushSaveTimeout).toHaveBeenCalled()
+			expect(saveWeekNow).toHaveBeenCalled()
+			expect(saveCustomColumnsNow).not.toHaveBeenCalled()
+			// Week 12 of 2026 starts on Mar 16; next week's Wednesday is Mar 25 (ISO year 2026, week 13).
+			expect(stashTaskForNextWeek).toHaveBeenCalledWith(task, 'wednesday', 2026, 13)
+		})
+
+		it('adds an exception on the home date for a recurring task moved with "this" scope', () => {
+			const defId = 'def-1'
+			const week = emptyWeek()
+			const task: Task = {
+				id: 't1',
+				title: 'Weekly review',
+				done: false,
+				notes: '',
+				recurrence: 'weekly',
+				color: '',
+				recurringSourceId: defId,
+				recurringOriginalDate: '2026-03-20', // Friday
+			}
+			week.days.friday.push(task)
+			const defs: RecurringTaskDefinition[] = [{
+				id: defId,
+				title: 'Weekly review',
+				notes: '',
+				recurrence: 'weekly',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 4, // Friday
+				dayOfMonth: 20,
+				exceptionDates: [],
+			}]
+			const {
+				openEdit,
+				moveEditingTaskToNextWeek,
+				weekData,
+				recurringTasks,
+				stashTaskForNextWeek,
+				saveCustomColumnsNow,
+			} = setup({ weekOverride: week, recurringDefs: defs })
+
+			openEdit('friday', task)
+			moveEditingTaskToNextWeek('friday', 'this')
+
+			expect(weekData.value.days.friday).toHaveLength(0)
+			// Definition unchanged; exception on the home date so the source
+			// day does not re-materialize.
+			expect(recurringTasks.value[0].dayOfWeek).toBe(4)
+			expect(recurringTasks.value[0].startDate).toBe('2026-03-01')
+			expect(recurringTasks.value[0].exceptionDates).toContain('2026-03-20')
+			expect(saveCustomColumnsNow).toHaveBeenCalled()
+			expect(stashTaskForNextWeek).toHaveBeenCalled()
+			// Task keeps its original home date so materialize on next week
+			// recognises it as a moved instance.
+			const stashedTask = (stashTaskForNextWeek as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as Task
+			expect(stashedTask.recurringOriginalDate).toBe('2026-03-20')
+		})
+
+		it('re-anchors the definition for a recurring task moved with "all" scope', () => {
+			const defId = 'def-1'
+			const week = emptyWeek()
+			const task: Task = {
+				id: 't1',
+				title: 'Weekly review',
+				done: false,
+				notes: '',
+				recurrence: 'weekly',
+				color: '',
+				recurringSourceId: defId,
+				recurringOriginalDate: '2026-03-20', // Friday
+			}
+			week.days.friday.push(task)
+			const defs: RecurringTaskDefinition[] = [{
+				id: defId,
+				title: 'Weekly review',
+				notes: '',
+				recurrence: 'weekly',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 4, // Friday
+				dayOfMonth: 20,
+				exceptionDates: ['2026-03-13'], // an earlier Friday that was previously excepted
+			}]
+			const {
+				openEdit,
+				moveEditingTaskToNextWeek,
+				weekData,
+				recurringTasks,
+				stashTaskForNextWeek,
+				saveCustomColumnsNow,
+			} = setup({ weekOverride: week, recurringDefs: defs })
+
+			openEdit('friday', task)
+			// Move to next week's Wednesday (2026-03-25), scope "all"
+			moveEditingTaskToNextWeek('wednesday', 'all')
+
+			expect(weekData.value.days.friday).toHaveLength(0)
+			// Definition re-anchored to next week's Wednesday
+			expect(recurringTasks.value[0].dayOfWeek).toBe(2)
+			expect(recurringTasks.value[0].dayOfMonth).toBe(25)
+			expect(recurringTasks.value[0].startDate).toBe('2026-03-25')
+			// Exceptions before the new startDate are pruned
+			expect(recurringTasks.value[0].exceptionDates).toEqual([])
+			expect(saveCustomColumnsNow).toHaveBeenCalled()
+			expect(stashTaskForNextWeek).toHaveBeenCalledWith(task, 'wednesday', 2026, 13)
+			// Task's original date advances to the new anchor
+			expect(task.recurringOriginalDate).toBe('2026-03-25')
 		})
 	})
 })
