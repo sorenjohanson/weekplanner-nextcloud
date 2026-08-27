@@ -28,6 +28,7 @@ class WeekPlannerMigrator implements IMigrator, ISizeEstimationMigrator {
 	private const PATH_WEEKS = self::PATH_ROOT . 'weeks.json';
 	private const PATH_CUSTOM_COLUMNS = self::PATH_ROOT . 'custom_columns.json';
 
+	/** @psalm-suppress PossiblyUnusedMethod */
 	public function __construct(
 		private readonly IAppManager $appManager,
 		private readonly WeekMapper $weekMapper,
