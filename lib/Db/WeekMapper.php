@@ -50,4 +50,16 @@ class WeekMapper extends QBMapper {
 			return null;
 		}
 	}
+
+	/**
+	 * @return Week[]
+	 */
+	public function findAllByUser(string $userId): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')
+			->from($this->getTableName())
+			->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+
+		return $this->findEntities($qb);
+	}
 }

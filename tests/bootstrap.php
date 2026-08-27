@@ -16,3 +16,9 @@ spl_autoload_register(static function (string $class): void {
 		require_once $file;
 	}
 });
+
+// Minimal Symfony Console stubs: the class exists at runtime inside Nextcloud
+// but is not part of our composer requirements.
+if (!interface_exists(\Symfony\Component\Console\Output\OutputInterface::class)) {
+	require_once __DIR__ . '/Stubs/SymfonyConsole.php';
+}

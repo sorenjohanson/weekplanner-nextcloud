@@ -19,10 +19,65 @@ services:
       # Set in .env when developing across devices (Tailscale, LAN, mDNS).
       - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS:-localhost}
       - OVERWRITEPROTOCOL=${OVERWRITEPROTOCOL:-http}
+      - WEEKPLANNER_ENABLE_NOTIFY_PUSH=true
     depends_on:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - nc_net
+
+  # Second Nextcloud instance used as a migration target so we can exercise
+  # nextcloud/user_migration end-to-end (export from `nextcloud`, upload the
+  # user.nextcloud_export file here, import). Reachable on http://localhost:8081.
+  # No notify_push sidecar — this instance opts out via the env var.
+  nextcloud_import:
+    image: nextcloud:33
+    entrypoint: /custom-entrypoint.sh
+    ports:
+      - "8081:80"
+    volumes:
+      - nextcloud_import_data:/var/www/html
+      - .:/var/www/html/custom_apps/weekplanner
+      - ./docker-entrypoint.sh:/custom-entrypoint.sh:ro
+    environment:
+      - SQLITE_DATABASE=nextcloud
+      - NEXTCLOUD_ADMIN_USER=admin
+      - NEXTCLOUD_ADMIN_PASSWORD=admin
+      - REDIS_HOST=redis
+      - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS:-localhost}
+      - OVERWRITEPROTOCOL=${OVERWRITEPROTOCOL:-http}
+      - WEEKPLANNER_ENABLE_NOTIFY_PUSH=false
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - nc_net
+
+  # Runs Nextcloud's cron.php every 5 minutes so background jobs (including the
+  # user_migration export/import jobs) actually execute. Without this the
+  # export queues but never runs — the default backgroundjobs_mode we set is
+  # `cron`, which expects an external scheduler like this container.
+  nextcloud_cron:
+    image: nextcloud:33
+    restart: unless-stopped
+    entrypoint: /cron.sh
+    volumes:
+      - nextcloud_data:/var/www/html
+    depends_on:
+      - nextcloud
+    networks:
+      - nc_net
+
+  nextcloud_import_cron:
+    image: nextcloud:33
+    restart: unless-stopped
+    entrypoint: /cron.sh
+    volumes:
+      - nextcloud_import_data:/var/www/html
+    depends_on:
+      - nextcloud_import
     networks:
       - nc_net
 
@@ -61,6 +116,7 @@ services:
 
 volumes:
   nextcloud_data:
+  nextcloud_import_data:
 
 networks:
   nc_net:
