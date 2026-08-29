@@ -1,6 +1,6 @@
 {
     "require-dev": {
-        "phpseclib/phpseclib": "~3.0.0"
+        "phpseclib/phpseclib": "~4.0.0"
     },
     "config": {
         "platform": {
