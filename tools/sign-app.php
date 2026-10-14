@@ -24,8 +24,8 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor-bin/signing/vendor/autoload.php';
 
-use phpseclib3\Crypt\RSA;
-use phpseclib3\File\X509;
+use phpseclib4\Crypt\RSA;
+use phpseclib4\File\X509;
 
 if ($argc !== 4) {
 	fwrite(STDERR, "Usage: php sign-app.php <appPath> <privateKeyPath> <certificatePath>\n");
@@ -66,14 +66,11 @@ if ($certificate === false || trim($certificate) === '') {
 // Sanity: cert public key must match the signing private key, otherwise
 // Nextcloud's integrity check will fail with "Signature could not get
 // verified." (see v1.8.1 cert/key drift bug).
-$x509 = new X509();
-if ($x509->loadX509($certificate) === false) {
-	fwrite(STDERR, "::error::Failed to parse certificate.\n");
-	exit(1);
-}
-$certPublicKey = $x509->getPublicKey();
-if ($certPublicKey === false) {
-	fwrite(STDERR, "::error::Failed to extract public key from certificate.\n");
+try {
+	$x509 = X509::load($certificate);
+	$certPublicKey = $x509->getPublicKey();
+} catch (\Throwable $e) {
+	fwrite(STDERR, '::error::Failed to parse certificate: ' . $e->getMessage() . "\n");
 	exit(1);
 }
 $privPublicKeyPem = (string)$privateKey->getPublicKey();

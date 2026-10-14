@@ -106,10 +106,10 @@ jobs:
           PUPPETEER_SKIP_DOWNLOAD: true
         run: pnpm install --frozen-lockfile
 
-      - name: Install signing tooling (phpseclib3 in vendor-bin/signing)
+      - name: Install signing tooling (phpseclib4 in vendor-bin/signing)
         run: |
           # tools/sign-app.php and tools/verify-app-signature.php require
-          # phpseclib3 to produce / verify RSA-PSS signatures matching
+          # phpseclib4 to produce / verify RSA-PSS signatures matching
           # Nextcloud's Checker scheme. Install via composer-bin without
           # pulling in the rest of the dev tooling.
           composer install --no-progress --no-interaction --no-scripts

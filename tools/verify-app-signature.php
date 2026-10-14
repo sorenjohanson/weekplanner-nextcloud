@@ -36,8 +36,8 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor-bin/signing/vendor/autoload.php';
 
-use phpseclib3\Crypt\RSA;
-use phpseclib3\File\X509;
+use phpseclib4\Crypt\RSA;
+use phpseclib4\File\X509;
 
 if ($argc < 2) {
 	fwrite(STDERR, "Usage: php verify-app-signature.php <appPath> [--root-ca=<path>] [--cn=<appId>]\n");
@@ -81,8 +81,9 @@ if ($signature === false) {
 }
 $certificatePem = $signatureData['certificate'];
 
-$x509 = new X509();
-if ($x509->loadX509($certificatePem) === false) {
+try {
+	$x509 = X509::load($certificatePem);
+} catch (\Throwable $e) {
 	fwrite(STDERR, "::error::Failed to parse bundled certificate\n");
 	exit(1);
 }
@@ -99,10 +100,10 @@ if ($rootCaPath !== null) {
 		exit(1);
 	}
 	foreach (splitCerts($rootCaPem) as $rootCert) {
-		$x509->loadCA($rootCert);
+		X509::addCA($rootCert);
 	}
 	// Re-load the leaf so phpseclib re-evaluates issuer linkage with the CA(s) loaded.
-	$x509->loadX509($certificatePem);
+	$x509 = X509::load($certificatePem);
 	if (!$x509->validateSignature()) {
 		fwrite(STDERR, "::error::Certificate chain does not validate against $rootCaPath\n");
 		exit(1);
@@ -111,7 +112,7 @@ if ($rootCaPath !== null) {
 
 // 3. Optional CN check.
 if ($expectedCN !== null) {
-	$cn = $x509->getDN(X509::DN_OPENSSL)['CN'] ?? null;
+	$cn = $x509->getSubjectDN(X509::DN_OPENSSL)['CN'] ?? null;
 	if ($cn !== $expectedCN) {
 		fwrite(STDERR, sprintf(
 			"::error::Certificate CN (%s) does not match expected app id (%s)\n",
@@ -126,7 +127,12 @@ if ($expectedCN !== null) {
 //    lib/private/IntegrityCheck/Checker.php in Nextcloud server. Drifting
 //    from this scheme is what caused the v1.8.3 integrity-check regression
 //    (released as v1.8.3, v1.9.0 — see fix/signing).
-$publicKey = $x509->getPublicKey();
+try {
+	$publicKey = $x509->getPublicKey();
+} catch (\Throwable $e) {
+	fwrite(STDERR, "::error::Failed to extract public key from certificate\n");
+	exit(1);
+}
 if (!$publicKey instanceof RSA\PublicKey) {
 	fwrite(STDERR, "::error::Bundled certificate's public key is not RSA\n");
 	exit(1);

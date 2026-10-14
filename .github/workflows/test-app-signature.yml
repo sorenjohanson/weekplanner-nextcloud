@@ -50,7 +50,7 @@ jobs:
           extensions: openssl, json
           coverage: none
 
-      - name: Install signing tooling (phpseclib3 in vendor-bin/signing)
+      - name: Install signing tooling (phpseclib4 in vendor-bin/signing)
         run: |
           composer install --no-progress --no-interaction --no-scripts
           composer bin signing install --no-progress --no-interaction
@@ -74,7 +74,7 @@ jobs:
           extensions: openssl, json
           coverage: none
 
-      - name: Install signing tooling (phpseclib3 in vendor-bin/signing)
+      - name: Install signing tooling (phpseclib4 in vendor-bin/signing)
         run: |
           composer install --no-progress --no-interaction --no-scripts
           composer bin signing install --no-progress --no-interaction
