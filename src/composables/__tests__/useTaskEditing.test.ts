@@ -193,6 +193,89 @@ describe('useTaskEditing', () => {
 			expect(materializeRecurringTasks).toHaveBeenCalled()
 		})
 
+		it('stores the selected colour on a new recurring definition', () => {
+			const week = emptyWeek()
+			const task: Task = { id: 't1', title: 'Standup', done: false, notes: '', recurrence: '', color: '' }
+			week.days.wednesday.push(task)
+			const { openEdit, saveEdit, editRecurrence, editColor, recurringTasks } = setup({ weekOverride: week })
+
+			openEdit('wednesday', task)
+			editRecurrence.value = 'daily'
+			editColor.value = 'green'
+			saveEdit()
+
+			expect(recurringTasks.value[0].color).toBe('green')
+		})
+
+		it('applies a colour change to every occurrence in the series', () => {
+			const defId = 'def-color'
+			const week = emptyWeek()
+			const mondayTask: Task = {
+				id: 't1',
+				title: 'Standup',
+				done: false,
+				notes: '',
+				recurrence: 'daily',
+				color: '',
+				recurringSourceId: defId,
+			}
+			week.days.monday.push(mondayTask)
+			week.days.sunday.push({
+				id: 't2',
+				title: 'Standup',
+				done: false,
+				notes: '',
+				recurrence: 'daily',
+				color: '',
+				recurringSourceId: defId,
+			})
+			const columns: CustomColumn[] = [{
+				id: 'custom_1',
+				title: 'Someday',
+				tasks: [{
+					id: 't3',
+					title: 'Standup',
+					done: false,
+					notes: '',
+					recurrence: 'daily',
+					color: '',
+					recurringSourceId: defId,
+				}],
+			}]
+			const defs: RecurringTaskDefinition[] = [{
+				id: defId,
+				title: 'Standup',
+				notes: '',
+				recurrence: 'daily',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 0,
+				dayOfMonth: 1,
+				exceptionDates: [],
+			}]
+			const {
+				openEdit,
+				saveEdit,
+				editColor,
+				weekData,
+				customColumns,
+				recurringTasks,
+				debouncedSave,
+				debouncedSaveCustomColumns,
+			} = setup({ weekOverride: week, recurringDefs: defs, columns })
+
+			openEdit('monday', mondayTask)
+			editColor.value = 'yellow'
+			saveEdit()
+
+			expect(recurringTasks.value[0].color).toBe('yellow')
+			expect(weekData.value.days.monday[0].color).toBe('yellow')
+			expect(weekData.value.days.sunday[0].color).toBe('yellow')
+			expect(customColumns.value[0].tasks[0].color).toBe('yellow')
+			expect(debouncedSave).toHaveBeenCalled()
+			expect(debouncedSaveCustomColumns).toHaveBeenCalled()
+		})
+
 		it('removes recurrence by setting endDate', () => {
 			const defId = 'existing-def'
 			const week = emptyWeek()

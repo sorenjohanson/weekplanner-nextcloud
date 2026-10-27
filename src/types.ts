@@ -37,6 +37,8 @@ export interface RecurringTaskDefinition {
 	dayOfWeek: number
 	dayOfMonth: number
 	exceptionDates: string[]
+	/** Series colour, inherited by every occurrence. Absent on definitions saved before colour support. */
+	color?: TaskColor
 }
 
 export type DayKey = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'

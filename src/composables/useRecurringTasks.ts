@@ -59,10 +59,69 @@ export function useRecurringTasks(
 	recurringTasks: Ref<RecurringTaskDefinition[]>,
 	debouncedSave: () => void,
 	customColumns?: Ref<CustomColumn[]>,
+	debouncedSaveCustomColumns?: () => void,
 ) {
+	/**
+	 * Keep every materialized occurrence in step with its definition's colour.
+	 * Definitions saved before colours existed have no `color` field; adopt the
+	 * colour of an existing occurrence so those series heal on load.
+	 *
+	 * @param dates the visible dates to reconcile
+	 */
+	function reconcileSeriesColors(dates: Date[]): void {
+		const dayTasks: Task[] = []
+		for (const date of dates) {
+			dayTasks.push(...weekData.value.days[getDayKeyOfDate(date)])
+		}
+		const columnTasks: Task[] = []
+		if (customColumns) {
+			for (const col of customColumns.value) {
+				columnTasks.push(...col.tasks)
+			}
+		}
+
+		let definitionsChanged = false
+		for (const task of [...dayTasks, ...columnTasks]) {
+			if (!task.recurringSourceId || !task.color) {
+				continue
+			}
+			const def = recurringTasks.value.find((d) => d.id === task.recurringSourceId)
+			if (def && def.color === undefined) {
+				def.color = task.color
+				definitionsChanged = true
+			}
+		}
+
+		const sync = (tasks: Task[]): boolean => {
+			let taskChanged = false
+			for (const task of tasks) {
+				if (!task.recurringSourceId) {
+					continue
+				}
+				const def = recurringTasks.value.find((d) => d.id === task.recurringSourceId)
+				if (def && def.color !== undefined && task.color !== def.color) {
+					task.color = def.color
+					taskChanged = true
+				}
+			}
+			return taskChanged
+		}
+		const daysChanged = sync(dayTasks)
+		const columnsChanged = sync(columnTasks)
+
+		if (definitionsChanged || columnsChanged) {
+			debouncedSaveCustomColumns?.()
+		}
+		if (daysChanged) {
+			debouncedSave()
+		}
+	}
+
 	function materializeRecurringTasks() {
 		const dates = viewDates.value
 		let changed = false
+
+		reconcileSeriesColors(dates)
 
 		// Clean up stale recurring instances (definition ended, deleted, or no
 		// longer matching pattern). We iterate the visible window by date and
@@ -141,7 +200,7 @@ export function useRecurringTasks(
 						done: false,
 						notes: def.notes,
 						recurrence: def.recurrence,
-						color: '',
+						color: def.color || '',
 						recurringSourceId: def.id,
 						recurringOriginalDate: dateStr,
 					})
