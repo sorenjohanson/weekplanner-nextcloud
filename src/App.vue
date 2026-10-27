@@ -61,6 +61,7 @@ const recurring = useRecurringTasks(
 	recurringTasks,
 	weekPersistence.debouncedSave,
 	columns.customColumns,
+	columns.debouncedSaveCustomColumns,
 )
 
 onWeekLoaded = () => {

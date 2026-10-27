@@ -53,6 +53,88 @@ describe('useRecurringTasks', () => {
 			expect(debouncedSave).toHaveBeenCalled()
 		})
 
+		it('materializes every instance with the series colour', () => {
+			const def: RecurringTaskDefinition = {
+				id: 'def-color-1',
+				title: 'Coloured standup',
+				notes: '',
+				recurrence: 'daily',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 0,
+				dayOfMonth: 1,
+				exceptionDates: [],
+				color: 'yellow',
+			}
+			const { weekData, materializeRecurringTasks } = setup([def])
+			materializeRecurringTasks()
+
+			for (const day of ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const) {
+				expect(weekData.value.days[day]).toHaveLength(1)
+				expect(weekData.value.days[day][0].color).toBe('yellow')
+			}
+		})
+
+		it('syncs already materialized instances to the series colour', () => {
+			const def: RecurringTaskDefinition = {
+				id: 'def-color-2',
+				title: 'Coloured standup',
+				notes: '',
+				recurrence: 'daily',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 0,
+				dayOfMonth: 1,
+				exceptionDates: [],
+				color: 'yellow',
+			}
+			const week = emptyWeek()
+			week.days.monday.push({
+				id: 'inst-uncoloured',
+				title: 'Coloured standup',
+				done: false,
+				notes: '',
+				recurrence: 'daily',
+				color: '',
+				recurringSourceId: 'def-color-2',
+			})
+			const { weekData, materializeRecurringTasks } = setup([def], week)
+			materializeRecurringTasks()
+
+			expect(weekData.value.days.monday[0].color).toBe('yellow')
+			expect(weekData.value.days.tuesday[0].color).toBe('yellow')
+		})
+
+		it('adopts an existing instance colour for a definition saved before colour support', () => {
+			const def: RecurringTaskDefinition = {
+				id: 'def-color-3',
+				title: 'Legacy standup',
+				notes: '',
+				recurrence: 'daily',
+				startDate: '2026-03-01',
+				endDate: '',
+				dayOfWeek: 0,
+				dayOfMonth: 1,
+				exceptionDates: [],
+			}
+			const week = emptyWeek()
+			week.days.monday.push({
+				id: 'inst-coloured',
+				title: 'Legacy standup',
+				done: false,
+				notes: '',
+				recurrence: 'daily',
+				color: 'green',
+				recurringSourceId: 'def-color-3',
+			})
+			const { weekData, recurringTasks, materializeRecurringTasks } = setup([def], week)
+			materializeRecurringTasks()
+
+			expect(recurringTasks.value[0].color).toBe('green')
+			expect(weekData.value.days.monday[0].color).toBe('green')
+			expect(weekData.value.days.tuesday[0].color).toBe('green')
+		})
+
 		it('does not duplicate tasks on second call', () => {
 			const def: RecurringTaskDefinition = {
 				id: 'def-1',

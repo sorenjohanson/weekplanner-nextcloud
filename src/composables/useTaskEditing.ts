@@ -94,6 +94,40 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 		return date ? toDateStr(date) : ''
 	}
 
+	/**
+	 * Apply a colour to a whole recurring series. Colour is a series-level
+	 * property: every occurrence, including ones already materialized in day
+	 * slots or custom columns, follows the definition.
+	 *
+	 * @param sourceId id of the recurring definition
+	 * @param color the colour to apply to the series
+	 */
+	function applySeriesColor(sourceId: string, color: TaskColor): boolean {
+		let changed = false
+		const def = recurringTasks.value.find((d) => d.id === sourceId)
+		if (def && def.color !== color) {
+			def.color = color
+			changed = true
+		}
+		for (const key of ALL_KEYS) {
+			for (const task of weekData.value.days[key]) {
+				if (task.recurringSourceId === sourceId && task.color !== color) {
+					task.color = color
+					changed = true
+				}
+			}
+		}
+		for (const col of customColumns.value) {
+			for (const task of col.tasks) {
+				if (task.recurringSourceId === sourceId && task.color !== color) {
+					task.color = color
+					changed = true
+				}
+			}
+		}
+		return changed
+	}
+
 	function handleRecurrenceChange(task: Task, day: DayKey) {
 		const newRecurrence = editRecurrence.value
 		const oldSourceId = task.recurringSourceId
@@ -116,6 +150,7 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 				dayOfWeek: dayOfWeekMonFirst(date),
 				dayOfMonth: date.getDate(),
 				exceptionDates: [],
+				color: task.color,
 			})
 			task.recurringSourceId = defId
 			task.recurrence = newRecurrence
@@ -130,6 +165,7 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 				def.notes = editNotes.value
 				def.recurrence = newRecurrence as 'daily' | 'weekly' | 'monthly'
 				def.endDate = ''
+				def.color = task.color
 				task.recurrence = newRecurrence
 				debouncedSaveCustomColumns()
 				materializeRecurringTasks()
@@ -168,6 +204,10 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 					task.notes = editNotes.value
 					task.recurrence = editRecurrence.value
 					task.color = editColor.value
+					if (task.recurringSourceId) {
+						applySeriesColor(task.recurringSourceId, task.color)
+						debouncedSave()
+					}
 					debouncedSaveCustomColumns()
 				}
 			}
@@ -178,6 +218,10 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 				task.title = editTitle.value.trim() || task.title
 				task.notes = editNotes.value
 				task.color = editColor.value
+				if (task.recurringSourceId) {
+					applySeriesColor(task.recurringSourceId, task.color)
+					debouncedSaveCustomColumns()
+				}
 				// Handle recurrence changes
 				if (editRecurrence.value !== oldRecurrence) {
 					handleRecurrenceChange(task, day as DayKey)
