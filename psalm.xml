@@ -7,7 +7,7 @@
     xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
     findUnusedBaselineEntry="true"
     findUnusedCode="true"
-	phpVersion="8.1"
+	phpVersion="8.2"
 >
     <projectFiles>
         <directory name="lib" />
