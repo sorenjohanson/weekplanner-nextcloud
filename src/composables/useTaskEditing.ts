@@ -1,5 +1,5 @@
 import type { ComputedRef, Ref } from 'vue'
-import type { CustomColumn, DayKey, Recurrence, RecurringDeleteMode, RecurringMoveMode, RecurringTaskDefinition, Task, TaskColor, WeekData } from '../types'
+import type { CustomColumn, DayKey, Recurrence, RecurringDeleteMode, RecurringMoveMode, RecurringTaskDefinition, RepeatUnit, Task, TaskColor, WeekData } from '../types'
 
 import { computed, nextTick, ref } from 'vue'
 import { ALL_KEYS } from '../types'
@@ -11,6 +11,7 @@ import {
 	toDateStr,
 } from '../utils/dateUtils'
 import { randomId } from '../utils/randomId'
+import { shiftCustomRepeatWeekdays } from '../utils/recurrence'
 
 export interface TaskEditingDeps {
 	viewStart: Ref<Date>
@@ -51,6 +52,9 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 	const editTitle = ref('')
 	const editNotes = ref('')
 	const editRecurrence = ref<Recurrence>('')
+	const editRepeatInterval = ref(1)
+	const editRepeatUnit = ref<RepeatUnit>('week')
+	const editRepeatWeekdays = ref<number[]>([])
 	const editColor = ref<TaskColor>('')
 	const editTitleInput = ref<HTMLInputElement | null>(null)
 
@@ -74,6 +78,16 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 		editNotes.value = task.notes || ''
 		editRecurrence.value = task.recurrence || ''
 		editColor.value = task.color || ''
+		const def = task.recurringSourceId
+			? recurringTasks.value.find((d) => d.id === task.recurringSourceId)
+			: undefined
+		const anchorDate = isCustomColumn(day) ? undefined : dateForDay(day as DayKey)
+		const anchorDow = anchorDate ? dayOfWeekMonFirst(anchorDate) : (def?.dayOfWeek ?? 0)
+		editRepeatInterval.value = def?.repeatInterval ?? 1
+		editRepeatUnit.value = def?.repeatUnit ?? 'week'
+		editRepeatWeekdays.value = def?.repeatWeekdays?.length
+			? [...def.repeatWeekdays]
+			: [def?.dayOfWeek ?? anchorDow]
 		nextTick(() => {
 			editTitleInput.value?.focus()
 		})
@@ -128,9 +142,24 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 		return changed
 	}
 
+	function applyCustomRepeatSettings(def: RecurringTaskDefinition) {
+		if (editRecurrence.value !== 'custom') {
+			delete def.repeatInterval
+			delete def.repeatUnit
+			delete def.repeatWeekdays
+			return
+		}
+		def.repeatInterval = Math.max(1, Math.floor(editRepeatInterval.value) || 1)
+		def.repeatUnit = editRepeatUnit.value
+		def.repeatWeekdays = editRepeatWeekdays.value.length
+			? [...editRepeatWeekdays.value].sort((a, b) => a - b)
+			: [def.dayOfWeek]
+	}
+
 	function handleRecurrenceChange(task: Task, day: DayKey) {
 		const newRecurrence = editRecurrence.value
 		const oldSourceId = task.recurringSourceId
+		const isCustom = newRecurrence === 'custom'
 
 		if (newRecurrence && !oldSourceId) {
 			// Setting recurrence for the first time: create a definition
@@ -140,17 +169,23 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 				return
 			}
 			const dateStr = toDateStr(date)
+			const anchorDow = dayOfWeekMonFirst(date)
 			recurringTasks.value.push({
 				id: defId,
 				title: editTitle.value.trim() || task.title,
 				notes: editNotes.value,
-				recurrence: newRecurrence as 'daily' | 'weekly' | 'monthly',
+				recurrence: newRecurrence as 'daily' | 'weekly' | 'monthly' | 'custom',
 				startDate: dateStr,
 				endDate: '',
-				dayOfWeek: dayOfWeekMonFirst(date),
+				dayOfWeek: anchorDow,
 				dayOfMonth: date.getDate(),
 				exceptionDates: [],
 				color: task.color,
+				repeatInterval: isCustom ? Math.max(1, Math.floor(editRepeatInterval.value) || 1) : undefined,
+				repeatUnit: isCustom ? editRepeatUnit.value : undefined,
+				repeatWeekdays: isCustom
+					? (editRepeatWeekdays.value.length ? [...editRepeatWeekdays.value].sort((a, b) => a - b) : [anchorDow])
+					: undefined,
 			})
 			task.recurringSourceId = defId
 			task.recurrence = newRecurrence
@@ -163,9 +198,10 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 			if (def) {
 				def.title = editTitle.value.trim() || task.title
 				def.notes = editNotes.value
-				def.recurrence = newRecurrence as 'daily' | 'weekly' | 'monthly'
+				def.recurrence = newRecurrence as 'daily' | 'weekly' | 'monthly' | 'custom'
 				def.endDate = ''
 				def.color = task.color
+				applyCustomRepeatSettings(def)
 				task.recurrence = newRecurrence
 				debouncedSaveCustomColumns()
 				materializeRecurringTasks()
@@ -231,6 +267,10 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 					if (def) {
 						def.title = task.title
 						def.notes = task.notes
+						if (editRecurrence.value === 'custom') {
+							applyCustomRepeatSettings(def)
+							materializeRecurringTasks()
+						}
 						debouncedSaveCustomColumns()
 					}
 				}
@@ -382,8 +422,10 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 			const targetDate = dateForDay(target as DayKey)
 			if (def && targetDate) {
 				const targetDateStr = toDateStr(targetDate)
+				const targetDow = dayOfWeekMonFirst(targetDate)
+				shiftCustomRepeatWeekdays(def, def.dayOfWeek, targetDow)
 				def.startDate = targetDateStr
-				def.dayOfWeek = dayOfWeekMonFirst(targetDate)
+				def.dayOfWeek = targetDow
 				def.dayOfMonth = targetDate.getDate()
 				def.exceptionDates = def.exceptionDates.filter((d) => d > targetDateStr)
 				task.recurringOriginalDate = targetDateStr
@@ -487,8 +529,10 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 			const def = recurringTasks.value.find((d) => d.id === task!.recurringSourceId)
 			if (def) {
 				if (mode === 'all') {
+					const targetDow = dayOfWeekMonFirst(targetDate)
+					shiftCustomRepeatWeekdays(def, def.dayOfWeek, targetDow)
 					def.startDate = targetDateStr
-					def.dayOfWeek = dayOfWeekMonFirst(targetDate)
+					def.dayOfWeek = targetDow
 					def.dayOfMonth = targetDate.getDate()
 					def.exceptionDates = def.exceptionDates.filter((d) => d > targetDateStr)
 					task.recurringOriginalDate = targetDateStr
@@ -531,6 +575,9 @@ export function useTaskEditing(deps: TaskEditingDeps) {
 		editTitle,
 		editNotes,
 		editRecurrence,
+		editRepeatInterval,
+		editRepeatUnit,
+		editRepeatWeekdays,
 		editColor,
 		editTitleInput,
 		newTasks,

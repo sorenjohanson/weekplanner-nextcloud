@@ -3,6 +3,7 @@ import type { CustomColumn, DayKey, RecurringTaskDefinition, Task, WeekData } fr
 
 import { dayOfWeekMonFirst, getDayKeyOfDate, toDateStr } from '../utils/dateUtils'
 import { randomId } from '../utils/randomId'
+import { matchesRecurrencePattern, shiftCustomRepeatWeekdays } from '../utils/recurrence'
 
 /**
  * First date within `dates` that matches a definition's recurrence pattern and
@@ -22,15 +23,7 @@ function findHomeDate(def: RecurringTaskDefinition, dates: Date[]): string | und
 		if (def.endDate && ds > def.endDate) {
 			continue
 		}
-		let matches = false
-		if (def.recurrence === 'daily') {
-			matches = true
-		} else if (def.recurrence === 'weekly') {
-			matches = dayOfWeekMonFirst(date) === def.dayOfWeek
-		} else if (def.recurrence === 'monthly') {
-			matches = date.getDate() === def.dayOfMonth
-		}
-		if (matches) {
+		if (matchesRecurrencePattern(def, date)) {
 			return ds
 		}
 	}
@@ -129,7 +122,6 @@ export function useRecurringTasks(
 		for (const date of dates) {
 			const day: DayKey = getDayKeyOfDate(date)
 			const dateStr = toDateStr(date)
-			const canonicalDow = dayOfWeekMonFirst(date)
 			const before = weekData.value.days[day].length
 			weekData.value.days[day] = weekData.value.days[day].filter((t) => {
 				if (!t.recurringSourceId) {
@@ -146,10 +138,7 @@ export function useRecurringTasks(
 				const wasMovedHere = t.recurringOriginalDate && t.recurringOriginalDate !== dateStr
 				// Remove instances that no longer match the current recurrence pattern
 				// (e.g. after changing from weekly to monthly) — but not moved instances
-				if (!wasMovedHere && def.recurrence === 'weekly' && canonicalDow !== def.dayOfWeek) {
-					return false
-				}
-				if (!wasMovedHere && def.recurrence === 'monthly' && date.getDate() !== def.dayOfMonth) {
+				if (!wasMovedHere && !matchesRecurrencePattern(def, date)) {
 					return false
 				}
 				if (!wasMovedHere && def.exceptionDates?.includes(dateStr)) {
@@ -170,7 +159,6 @@ export function useRecurringTasks(
 		for (const date of dates) {
 			const day: DayKey = getDayKeyOfDate(date)
 			const dateStr = toDateStr(date)
-			const canonicalDow = dayOfWeekMonFirst(date)
 			for (const def of recurringTasks.value) {
 				if (dateStr < def.startDate) {
 					continue
@@ -178,15 +166,7 @@ export function useRecurringTasks(
 				if (def.endDate && dateStr > def.endDate) {
 					continue
 				}
-				let matches = false
-				if (def.recurrence === 'daily') {
-					matches = true
-				} else if (def.recurrence === 'weekly') {
-					matches = canonicalDow === def.dayOfWeek
-				} else if (def.recurrence === 'monthly') {
-					matches = date.getDate() === def.dayOfMonth
-				}
-				if (!matches) {
+				if (!matchesRecurrencePattern(def, date)) {
 					continue
 				}
 				if (def.exceptionDates?.includes(dateStr)) {
@@ -297,8 +277,10 @@ export function useRecurringTasks(
 			return
 		}
 		const targetDateStr = toDateStr(targetDate)
+		const targetDow = dayOfWeekMonFirst(targetDate)
+		shiftCustomRepeatWeekdays(def, def.dayOfWeek, targetDow)
 		def.startDate = targetDateStr
-		def.dayOfWeek = dayOfWeekMonFirst(targetDate)
+		def.dayOfWeek = targetDow
 		def.dayOfMonth = targetDate.getDate()
 		def.exceptionDates = def.exceptionDates.filter((d) => d > targetDateStr)
 		task.recurringOriginalDate = targetDateStr
