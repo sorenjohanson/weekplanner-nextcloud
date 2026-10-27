@@ -21,8 +21,13 @@ vi.mock('@nextcloud/axios', () => ({
 	default: { get: vi.fn() },
 }))
 
+const { mockGetRootUrl } = vi.hoisted(() => ({
+	mockGetRootUrl: vi.fn(() => ''),
+}))
+
 vi.mock('@nextcloud/router', () => ({
 	generateUrl: () => '/mock/url',
+	getRootUrl: () => mockGetRootUrl(),
 }))
 const mockListen = vi.mocked(listen as (event: string, cb: (type: string, body: unknown) => void) => boolean)
 const mockGet = vi.mocked(axios.get)
@@ -53,6 +58,19 @@ class FakeWebSocketFailure {
 	}
 
 	close() {}
+}
+
+function fakeWebSocket(fail: (url: string) => boolean) {
+	return class {
+		onopen: (() => void) | null = null
+		onerror: (() => void) | null = null
+		onclose: (() => void) | null = null
+		constructor(url: string) {
+			queueMicrotask(() => fail(url) ? this.onerror?.() : this.onopen?.())
+		}
+
+		close() {}
+	}
 }
 
 function setup(overrides: {
@@ -103,6 +121,7 @@ describe('usePolling', () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 		mockGetCapabilities.mockReturnValue({ notify_push: { endpoints: {} } })
+		mockGetRootUrl.mockReturnValue('')
 		globalThis.WebSocket = FakeWebSocketSuccess as unknown as typeof WebSocket
 	})
 
@@ -127,15 +146,39 @@ describe('usePolling', () => {
 			expect(mockListen).not.toHaveBeenCalled()
 		})
 
-		it('rewrites the notify_push websocket to the page origin and leaves pre_auth alone', async () => {
-			const caps = { notify_push: { endpoints: { websocket: 'ws://hardcoded:7867/ws', pre_auth: 'http://nextcloud/index.php/apps/notify_push/preauth' } } }
+		it('keeps the advertised websocket when it connects and leaves pre_auth alone', async () => {
+			const caps = { notify_push: { endpoints: { websocket: 'ws://notify_push:7867/ws', pre_auth: 'http://nextcloud/index.php/apps/notify_push/preauth' } } }
 			mockGetCapabilities.mockReturnValue(caps)
 			const { polling } = setup()
 
 			await polling.trySetupNotifyPush()
 
-			expect(caps.notify_push.endpoints.websocket).toMatch(/^wss?:\/\/[^/]+\/push\/ws$/)
+			expect(caps.notify_push.endpoints.websocket).toBe('ws://notify_push:7867/ws')
 			expect(caps.notify_push.endpoints.pre_auth).toBe('http://nextcloud/index.php/apps/notify_push/preauth')
+		})
+
+		it('falls back to the same-origin /push path when the advertised endpoint fails', async () => {
+			const caps = { notify_push: { endpoints: { websocket: 'ws://notify_push:7867/ws' } } }
+			mockGetCapabilities.mockReturnValue(caps)
+			globalThis.WebSocket = fakeWebSocket((url) => url === 'ws://notify_push:7867/ws') as unknown as typeof WebSocket
+			const { polling } = setup()
+
+			await polling.trySetupNotifyPush()
+
+			expect(caps.notify_push.endpoints.websocket).toMatch(/^wss?:\/\/[^/]+\/push\/ws$/)
+			expect(mockListen).toHaveBeenCalled()
+		})
+
+		it('includes the Nextcloud webroot in the same-origin fallback', async () => {
+			mockGetRootUrl.mockReturnValue('/nextcloud')
+			const caps = { notify_push: { endpoints: { websocket: 'ws://notify_push:7867/ws' } } }
+			mockGetCapabilities.mockReturnValue(caps)
+			globalThis.WebSocket = fakeWebSocket((url) => url === 'ws://notify_push:7867/ws') as unknown as typeof WebSocket
+			const { polling } = setup()
+
+			await polling.trySetupNotifyPush()
+
+			expect(caps.notify_push.endpoints.websocket).toMatch(/^wss?:\/\/[^/]+\/nextcloud\/push\/ws$/)
 		})
 	})
 
