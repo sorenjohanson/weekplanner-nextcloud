@@ -193,6 +193,80 @@ describe('useTaskEditing', () => {
 			expect(materializeRecurringTasks).toHaveBeenCalled()
 		})
 
+		it('creates a custom definition with interval and weekdays', () => {
+			const week = emptyWeek()
+			const task: Task = { id: 't1', title: 'Gym', done: false, notes: '', recurrence: '', color: '' }
+			week.days.wednesday.push(task)
+			const {
+				openEdit,
+				saveEdit,
+				editRecurrence,
+				editRepeatInterval,
+				editRepeatUnit,
+				editRepeatWeekdays,
+				recurringTasks,
+			} = setup({ weekOverride: week })
+
+			openEdit('wednesday', task)
+			editRecurrence.value = 'custom'
+			editRepeatInterval.value = 2
+			editRepeatUnit.value = 'week'
+			editRepeatWeekdays.value = [0, 2]
+			saveEdit()
+
+			expect(recurringTasks.value).toHaveLength(1)
+			expect(recurringTasks.value[0].recurrence).toBe('custom')
+			expect(recurringTasks.value[0].repeatInterval).toBe(2)
+			expect(recurringTasks.value[0].repeatUnit).toBe('week')
+			expect(recurringTasks.value[0].repeatWeekdays).toEqual([0, 2])
+		})
+
+		it('updates custom options without changing the recurrence dropdown', () => {
+			const defId = 'custom-def'
+			const week = emptyWeek()
+			const task: Task = {
+				id: 't1',
+				title: 'Gym',
+				done: false,
+				notes: '',
+				recurrence: 'custom',
+				color: '',
+				recurringSourceId: defId,
+			}
+			week.days.wednesday.push(task)
+			const defs: RecurringTaskDefinition[] = [{
+				id: defId,
+				title: 'Gym',
+				notes: '',
+				recurrence: 'custom',
+				startDate: '2026-03-18',
+				endDate: '',
+				dayOfWeek: 2,
+				dayOfMonth: 18,
+				exceptionDates: [],
+				repeatInterval: 1,
+				repeatUnit: 'week',
+				repeatWeekdays: [2],
+			}]
+			const {
+				openEdit,
+				saveEdit,
+				editRepeatInterval,
+				editRepeatWeekdays,
+				recurringTasks,
+				materializeRecurringTasks,
+			} = setup({ weekOverride: week, recurringDefs: defs })
+
+			openEdit('wednesday', task)
+			editRepeatInterval.value = 3
+			editRepeatWeekdays.value = [0, 2, 4]
+			saveEdit()
+
+			expect(recurringTasks.value[0].repeatInterval).toBe(3)
+			expect(recurringTasks.value[0].repeatWeekdays).toEqual([0, 2, 4])
+			expect(materializeRecurringTasks).toHaveBeenCalled()
+		})
+
 		it('stores the selected colour on a new recurring definition', () => {
 			const week = emptyWeek()
 			const task: Task = { id: 't1', title: 'Standup', done: false, notes: '', recurrence: '', color: '' }

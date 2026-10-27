@@ -1,4 +1,6 @@
-export type Recurrence = '' | 'daily' | 'weekly' | 'monthly'
+export type Recurrence = '' | 'daily' | 'weekly' | 'monthly' | 'custom'
+
+export type RepeatUnit = 'day' | 'week' | 'month' | 'year'
 
 export type RecurringDeleteMode = 'this' | 'this-and-future' | 'all'
 
@@ -30,13 +32,19 @@ export interface RecurringTaskDefinition {
 	id: string
 	title: string
 	notes: string
-	recurrence: 'daily' | 'weekly' | 'monthly'
+	recurrence: 'daily' | 'weekly' | 'monthly' | 'custom'
 	startDate: string
 	endDate: string
 	/** 0=Monday..6=Sunday — canonical day of week, independent of the user's firstDayOfWeek display preference. */
 	dayOfWeek: number
 	dayOfMonth: number
 	exceptionDates: string[]
+	/** Custom recurrence interval, e.g. 2 for "every 2 weeks". Only used when recurrence is 'custom'. */
+	repeatInterval?: number
+	/** Unit paired with repeatInterval. Only used when recurrence is 'custom'. */
+	repeatUnit?: RepeatUnit
+	/** 0=Monday..6=Sunday weekdays selected for a custom weekly repeat. */
+	repeatWeekdays?: number[]
 	/** Series colour, inherited by every occurrence. Absent on definitions saved before colour support. */
 	color?: TaskColor
 }

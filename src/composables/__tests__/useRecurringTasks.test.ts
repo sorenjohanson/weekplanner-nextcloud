@@ -229,6 +229,102 @@ describe('useRecurringTasks', () => {
 		})
 	})
 
+	describe('custom recurrence', () => {
+		function customDef(overrides: Partial<RecurringTaskDefinition>): RecurringTaskDefinition {
+			return {
+				id: 'custom-def',
+				title: 'Custom task',
+				notes: '',
+				recurrence: 'custom',
+				startDate: '2026-03-16',
+				endDate: '',
+				dayOfWeek: 0,
+				dayOfMonth: 16,
+				exceptionDates: [],
+				repeatInterval: 1,
+				repeatUnit: 'week',
+				repeatWeekdays: [0],
+				...overrides,
+			}
+		}
+
+		it('materializes every N days from the start date', () => {
+			const { weekData, materializeRecurringTasks } = setup([
+				customDef({ repeatInterval: 2, repeatUnit: 'day', repeatWeekdays: [] }),
+			])
+			materializeRecurringTasks()
+
+			expect(weekData.value.days.monday).toHaveLength(1)
+			expect(weekData.value.days.tuesday).toHaveLength(0)
+			expect(weekData.value.days.wednesday).toHaveLength(1)
+			expect(weekData.value.days.thursday).toHaveLength(0)
+			expect(weekData.value.days.friday).toHaveLength(1)
+			expect(weekData.value.days.saturday).toHaveLength(0)
+			expect(weekData.value.days.sunday).toHaveLength(1)
+		})
+
+		it('materializes on every selected weekday for a custom weekly repeat', () => {
+			const { weekData, materializeRecurringTasks } = setup([
+				customDef({ repeatWeekdays: [0, 2, 4] }),
+			])
+			materializeRecurringTasks()
+
+			expect(weekData.value.days.monday).toHaveLength(1)
+			expect(weekData.value.days.tuesday).toHaveLength(0)
+			expect(weekData.value.days.wednesday).toHaveLength(1)
+			expect(weekData.value.days.thursday).toHaveLength(0)
+			expect(weekData.value.days.friday).toHaveLength(1)
+			expect(weekData.value.days.saturday).toHaveLength(0)
+			expect(weekData.value.days.sunday).toHaveLength(0)
+		})
+
+		it('skips weeks that are not a multiple of the interval', () => {
+			const { weekData, materializeRecurringTasks } = setup([
+				customDef({
+					startDate: '2026-03-09',
+					repeatInterval: 2,
+					repeatUnit: 'week',
+					repeatWeekdays: [0],
+				}),
+			])
+			materializeRecurringTasks()
+
+			expect(weekData.value.days.monday).toHaveLength(0)
+		})
+
+		it('materializes every N months on the anchor day', () => {
+			const { weekData, materializeRecurringTasks } = setup([
+				customDef({
+					startDate: '2026-01-18',
+					dayOfMonth: 18,
+					repeatInterval: 2,
+					repeatUnit: 'month',
+					repeatWeekdays: [],
+				}),
+			])
+			materializeRecurringTasks()
+
+			expect(weekData.value.days.wednesday).toHaveLength(1)
+			expect(weekData.value.days.friday).toHaveLength(0)
+		})
+
+		it('materializes every N years on the anchor month and day', () => {
+			const { weekData, materializeRecurringTasks } = setup([
+				customDef({
+					startDate: '2020-03-18',
+					dayOfMonth: 18,
+					repeatInterval: 1,
+					repeatUnit: 'year',
+					repeatWeekdays: [],
+				}),
+			])
+			materializeRecurringTasks()
+
+			expect(weekData.value.days.wednesday).toHaveLength(1)
+			expect(weekData.value.days.monday).toHaveLength(0)
+		})
+	})
+
 	describe('date range filtering', () => {
 		it('does not materialize before startDate', () => {
 			const def: RecurringTaskDefinition = {

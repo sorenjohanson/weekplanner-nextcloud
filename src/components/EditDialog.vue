@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DayKey, Recurrence, RecurringDeleteMode, RecurringMoveMode, TaskColor } from '../types'
+import type { DayKey, Recurrence, RecurringDeleteMode, RecurringMoveMode, RepeatUnit, TaskColor } from '../types'
 
 import { computed, onMounted, ref } from 'vue'
 import { ChromePicker } from 'vue-color'
@@ -31,6 +31,9 @@ const props = defineProps<{
 	title: string
 	notes: string
 	recurrence: Recurrence
+	repeatInterval: number
+	repeatUnit: RepeatUnit
+	repeatWeekdays: number[]
 	color: TaskColor
 	isRecurring: boolean
 	currentLocation: DayKey | string
@@ -43,6 +46,9 @@ const emit = defineEmits<{
 	'update:title': [value: string]
 	'update:notes': [value: string]
 	'update:recurrence': [value: Recurrence]
+	'update:repeatInterval': [value: number]
+	'update:repeatUnit': [value: RepeatUnit]
+	'update:repeatWeekdays': [value: number[]]
 	'update:color': [value: TaskColor]
 	save: []
 	delete: [mode?: RecurringDeleteMode]
@@ -52,6 +58,23 @@ const emit = defineEmits<{
 
 type PendingMoveKind = 'same-week' | 'next-week'
 
+const WEEKDAY_OPTIONS: { value: number, label: string, title: string }[] = [
+	{ value: 0, label: 'M', title: 'Monday' },
+	{ value: 1, label: 'T', title: 'Tuesday' },
+	{ value: 2, label: 'W', title: 'Wednesday' },
+	{ value: 3, label: 'T', title: 'Thursday' },
+	{ value: 4, label: 'F', title: 'Friday' },
+	{ value: 5, label: 'S', title: 'Saturday' },
+	{ value: 6, label: 'S', title: 'Sunday' },
+]
+
+const REPEAT_UNITS: { value: RepeatUnit, label: string, plural: string }[] = [
+	{ value: 'day', label: 'day', plural: 'days' },
+	{ value: 'week', label: 'week', plural: 'weeks' },
+	{ value: 'month', label: 'month', plural: 'months' },
+	{ value: 'year', label: 'year', plural: 'years' },
+]
+
 const titleInput = ref<HTMLInputElement | null>(null)
 const showRecurringDeleteOptions = ref(false)
 const showCustomColor = ref(false)
@@ -60,6 +83,26 @@ const pendingMoveTarget = ref<DayKey | string | null>(null)
 const pendingMoveKind = ref<PendingMoveKind | null>(null)
 
 const isCustomColor = computed(() => props.color.startsWith('#'))
+
+function handleIntervalInput(event: Event) {
+	const value = Number.parseInt((event.target as HTMLInputElement).value, 10)
+	emit('update:repeatInterval', Number.isFinite(value) && value > 0 ? value : 1)
+}
+
+function handleUnitChange(event: Event) {
+	emit('update:repeatUnit', (event.target as HTMLSelectElement).value as RepeatUnit)
+}
+
+function toggleRepeatWeekday(dow: number) {
+	if (props.repeatWeekdays.includes(dow)) {
+		if (props.repeatWeekdays.length === 1) {
+			return
+		}
+		emit('update:repeatWeekdays', props.repeatWeekdays.filter((d) => d !== dow))
+	} else {
+		emit('update:repeatWeekdays', [...props.repeatWeekdays, dow].sort((a, b) => a - b))
+	}
+}
 
 const customColorValue = computed(() => (isCustomColor.value ? props.color : '#E8D4FF'))
 
@@ -185,7 +228,48 @@ onMounted(() => {
 					<option value="monthly">
 						Monthly
 					</option>
+					<option value="custom">
+						Custom
+					</option>
 				</select>
+				<div v-if="recurrence === 'custom'" class="edit-custom-repeat">
+					<div class="edit-custom-repeat-line">
+						<span class="edit-custom-repeat-prefix">Repeat every</span>
+						<input
+							class="edit-field edit-repeat-interval"
+							type="number"
+							min="1"
+							step="1"
+							:value="repeatInterval"
+							@input="handleIntervalInput">
+						<select
+							class="edit-field edit-repeat-unit"
+							:value="repeatUnit"
+							@change="handleUnitChange">
+							<option
+								v-for="unit in REPEAT_UNITS"
+								:key="unit.value"
+								:value="unit.value">
+								{{ repeatInterval === 1 ? unit.label : unit.plural }}
+							</option>
+						</select>
+					</div>
+					<div v-if="repeatUnit === 'week'" class="edit-repeat-weekdays">
+						<span class="edit-custom-repeat-prefix">Repeats on</span>
+						<div class="edit-repeat-weekday-chips">
+							<button
+								v-for="day in WEEKDAY_OPTIONS"
+								:key="day.value"
+								type="button"
+								class="edit-repeat-weekday"
+								:class="{ selected: repeatWeekdays.includes(day.value) }"
+								:title="day.title"
+								@click="toggleRepeatWeekday(day.value)">
+								{{ day.label }}
+							</button>
+						</div>
+					</div>
+				</div>
 				<label class="edit-label edit-label-color">Color</label>
 				<div class="edit-color-picker">
 					<button
@@ -407,6 +491,72 @@ onMounted(() => {
 
 .edit-notes-input::placeholder {
 	color: var(--color-text-maxcontrast);
+}
+
+.edit-custom-repeat {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 8px;
+}
+
+.edit-custom-repeat-line {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.edit-custom-repeat-prefix {
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+	white-space: nowrap;
+}
+
+.edit-repeat-interval {
+	width: 64px;
+	flex: 0 0 64px;
+}
+
+.edit-repeat-unit {
+	width: auto;
+	flex: 0 1 110px;
+}
+
+.edit-repeat-weekdays {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.edit-repeat-weekday-chips {
+	display: flex;
+	gap: 4px;
+}
+
+.edit-repeat-weekday {
+	width: 26px;
+	height: 26px;
+	min-width: 26px;
+	padding: 0;
+	border: 1px solid var(--color-border-dark);
+	border-radius: 50%;
+	background-color: var(--color-main-background);
+	color: var(--color-main-text);
+	font-size: 12px;
+	font-family: inherit;
+	cursor: pointer;
+	transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.edit-repeat-weekday:hover {
+	border-color: var(--color-primary-element);
+}
+
+.edit-repeat-weekday.selected {
+	background-color: var(--color-primary-element);
+	border-color: var(--color-primary-element);
+	color: var(--color-primary-element-text);
 }
 
 .edit-label-color {

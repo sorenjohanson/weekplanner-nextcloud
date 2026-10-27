@@ -16,6 +16,9 @@ function mountDialog(isRecurring: boolean) {
 			title: 'Standup',
 			notes: '',
 			recurrence: 'weekly',
+			repeatInterval: 1,
+			repeatUnit: 'week',
+			repeatWeekdays: [3],
 			color: '',
 			isRecurring,
 			currentLocation: 'thursday',
@@ -29,6 +32,35 @@ function mountDialog(isRecurring: boolean) {
 		},
 	})
 }
+
+describe('EditDialog custom repeat', () => {
+	it('does not show custom options until Custom is selected', async () => {
+		const wrapper = mountDialog(false)
+
+		expect(wrapper.find('.edit-custom-repeat').exists()).toBe(false)
+
+		await wrapper.setProps({ recurrence: 'custom' })
+
+		expect(wrapper.find('.edit-custom-repeat').exists()).toBe(true)
+		expect(wrapper.text()).toContain('Repeat every')
+		expect(wrapper.text()).toContain('Repeats on')
+	})
+
+	it('emits the selected interval and weekday', async () => {
+		const wrapper = mountDialog(false)
+		await wrapper.setProps({ recurrence: 'custom' })
+
+		await wrapper.find('.edit-repeat-interval').setValue('2')
+		expect(wrapper.emitted('update:repeatInterval')?.[0]).toEqual([2])
+
+		await wrapper.find('.edit-repeat-unit').setValue('month')
+		expect(wrapper.emitted('update:repeatUnit')?.[0]).toEqual(['month'])
+
+		const tuesday = wrapper.findAll('.edit-repeat-weekday')[1]
+		await tuesday.trigger('click')
+		expect(wrapper.emitted('update:repeatWeekdays')?.[0]).toEqual([[1, 3]])
+	})
+})
 
 describe('EditDialog move scope', () => {
 	it('shows the move scope popup when moving a recurring task', async () => {

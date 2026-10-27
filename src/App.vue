@@ -106,6 +106,9 @@ const {
 	editTitle,
 	editNotes,
 	editRecurrence,
+	editRepeatInterval,
+	editRepeatUnit,
+	editRepeatWeekdays,
 	editColor,
 	newTasks,
 	openEdit,
@@ -362,6 +365,9 @@ void currentWeek
 						:title="editTitle"
 						:notes="editNotes"
 						:recurrence="editRecurrence"
+						:repeatInterval="editRepeatInterval"
+						:repeatUnit="editRepeatUnit"
+						:repeatWeekdays="editRepeatWeekdays"
 						:color="editColor"
 						:isRecurring="editingTaskIsRecurring"
 						:currentLocation="editingTask.day"
@@ -371,6 +377,9 @@ void currentWeek
 						@update:title="editTitle = $event"
 						@update:notes="editNotes = $event"
 						@update:recurrence="editRecurrence = $event"
+						@update:repeatInterval="editRepeatInterval = $event"
+						@update:repeatUnit="editRepeatUnit = $event"
+						@update:repeatWeekdays="editRepeatWeekdays = $event"
 						@update:color="editColor = $event"
 						@save="saveEdit"
 						@delete="deleteEditingTask($event)"
