@@ -27,8 +27,8 @@ importers:
         specifier: ^3.2.0
         version: 3.2.0
       '@nextcloud/vue':
-        specifier: ^9.14.0
-        version: 9.14.0(@vue/compiler-sfc@3.5.44)(debug@4.4.3(supports-color@10.2.2))(esbuild@0.27.7)(rollup@4.61.1)(supports-color@10.2.2)(typescript@6.0.3)(vite@7.3.5(@types/node@26.2.0)(sass@1.101.0)(yaml@2.9.0))
+        specifier: ^9.14.1
+        version: 9.14.1(@vue/compiler-sfc@3.5.44)(debug@4.4.3(supports-color@10.2.2))(esbuild@0.27.7)(rollup@4.61.1)(supports-color@10.2.2)(typescript@6.0.3)(vite@7.3.5(@types/node@26.2.0)(sass@1.101.0)(yaml@2.9.0))
       vue:
         specifier: ^3.5.43
         version: 3.5.44(typescript@6.0.3)
@@ -757,12 +757,12 @@ packages:
     peerDependencies:
       vue: ^3
 
-  '@nextcloud/vue@9.14.0':
-    resolution: {integrity: sha512-8Li88fy7HlhjKq63F77iMEiJdQ3DCm6C6dUIB0v3RHmaI0kWKdgqf2rGxIWOqjT5uqexB9qffiCWDYVM5WxceQ==}
+  '@nextcloud/vue@9.14.1':
+    resolution: {integrity: sha512-qLCYNx0fFy2ZI+2e6nmNtzNfHsU/utwCM+u67kqLUi/Uk11RrFxEXb2DxOJwodbF2K/EArtmuk3l9FJqYJ6v/g==}
     engines: {node: ^20.11.0 || ^22 || ^24}
     peerDependencies:
-      '@nextcloud/dialogs': ^7.4.0
-      '@nextcloud/files': ^4.1.0
+      '@nextcloud/dialogs': ^7.4.0 || ^8.0.0
+      '@nextcloud/files': ^4.1.1
     peerDependenciesMeta:
       '@nextcloud/dialogs':
         optional: true
@@ -2018,9 +2018,6 @@ packages:
     resolution: {integrity: sha512-kVscqXk4OCp68SZ0dkgEKVi6/8ij300KBWTJq32P/dYeWTSwK41WyTxalN1eRmA5Z9UU/LX9D7FWSmV9SAYx6g==}
     engines: {node: '>=0.10.0'}
 
-  eventemitter3@5.0.4:
-    resolution: {integrity: sha512-mlsTRyGaPBjPedk6Bvw+aqbsXDtoAyAzm5MO7JgU+yVRyMQ5O8bD4Kcci7BS85f93veegeCPkL8R4GLClnjLFw==}
-
   events@3.3.0:
     resolution: {integrity: sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q==}
     engines: {node: '>=0.8.x'}
@@ -2497,8 +2494,8 @@ packages:
   lines-and-columns@1.2.4:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
 
-  linkifyjs@4.3.3:
-    resolution: {integrity: sha512-P8aEP5U/D1/IlTY2OeYsErdwh9bGuLE30NcXtKEjgdHcahveQoQwM2yZNsioQHsWFz0P7KKudisbrzCgR0sDHg==}
+  linkifyjs@4.4.0:
+    resolution: {integrity: sha512-InTexvtbai+2c+dEVGcc6O6P2DMVIiwD9a/i4zFroazOIYLOS6FSVmAJ7kFeumnCMx6/gQqNAkbUvgMubV4+MA==}
 
   local-pkg@1.2.1:
     resolution: {integrity: sha512-++gUqRDEvcnN6Zhqrr+y/CkVEHhlrR96vZn3nZZPYzMcBUyBtTKzB9NadClFIsIVSsu+3i9tfk/erqy9kAmt7Q==}
@@ -2807,13 +2804,9 @@ packages:
     resolution: {integrity: sha512-LaNjtRWUBY++zB5nE/NwcaoMylSPk+S+ZHNB1TzdbMJMny6dynpAGt7X/tl/QYq3TIeE6nxHppbo2LGymrG5Pw==}
     engines: {node: '>=10'}
 
-  p-queue@9.3.5:
-    resolution: {integrity: sha512-Lki/zhXFVmDhesBUn/yHRLW9Bte7mE7xoFHzTR8sIomV7a2z+LxYAPkGvdfidNiu4fKSfjtawixxSHcZci5QcQ==}
-    engines: {node: '>=20'}
-
-  p-timeout@7.0.1:
-    resolution: {integrity: sha512-AxTM2wDGORHGEkPCt8yqxOTMgpfbEHqF51f/5fJCmwFC3C/zNcGT63SymH2ttOAaiIws2zVg4+izQCjrakcwHg==}
-    engines: {node: '>=20'}
+  p-queue@10.0.0:
+    resolution: {integrity: sha512-P2wrCri3bhGLPo3kX7qYVXbo/5GvaVATU0DpO24CbeT53Y4z35t8JUWku04ERpXHUYB5rPMi3TkWE3fmJgx5rA==}
+    engines: {node: '>=22'}
 
   package-name-regex@2.0.6:
     resolution: {integrity: sha512-gFL35q7kbE/zBaPA3UKhp2vSzcPYx2ecbYuwv1ucE9Il6IIgBDweBlH8D68UFGZic2MkllKa2KHCfC1IQBQUYA==}
@@ -3374,8 +3367,8 @@ packages:
   svg-tags@1.0.0:
     resolution: {integrity: sha512-ovssysQTa+luh7A5Weu3Rta6FJlFBBbInjOh722LIt6klpU2/HtdUbszju/G4devcvk8PGt7FCLv5wftu3THUA==}
 
-  tabbable@6.5.0:
-    resolution: {integrity: sha512-wieBHXygIm7OyQOu5hQlkk62/WyCFYGlWg7L6/ZCUZwx0o398Zkn4pVmMyfYhfMG8kGrj/Krt8eIk6UKC6VzwA==}
+  tabbable@6.5.1:
+    resolution: {integrity: sha512-dMCuwDUY6Noz3zVKLefBC4wq+aJV20yc7vWmM7uTNGwtQSFF5kX7OUIUsxuVajz/bdt5Xqdah3/0NLjth+cM5A==}
 
   table@6.9.0:
     resolution: {integrity: sha512-9kY+CygyYM6j02t5YFHbNz2FN5QmYGv9zAjVp4lCDjlCw7amdckXlEt/bjMhUIfj4ThGRE4gCUH5+yGnNuPo5A==}
@@ -3490,8 +3483,8 @@ packages:
   unist-util-stringify-position@4.0.0:
     resolution: {integrity: sha512-0ASV06AAoKCDkS2+xw5RXJywruurpbC4JZSm7nr7MOt1ojAzvyyaO+UxZf18j8FCF6kmzCZKcAgN/yu2gm2XgQ==}
 
-  unist-util-visit-parents@6.0.2:
-    resolution: {integrity: sha512-goh1s1TBrqSqukSc8wrjwWhL0hiJxgA8m4kFxGlQ+8FYQ3C/m11FcTs4YYem7V664AhHVvgoQLk890Ssdsr2IQ==}
+  unist-util-visit-parents@6.1.0:
+    resolution: {integrity: sha512-vKXxz6O38sKDj1mtx/k2cWvkkFBuYGx6uGrlzBkVeWCRF/F8sdI0j3Wbkz/5rVNRRuVc8UrgRdbCxNhmYXgP3w==}
 
   unist-util-visit@5.1.0:
     resolution: {integrity: sha512-m+vIdyeCOpdr/QeQCu2EzxX/ohgS8KbnPDgFni4dQsfSCtpz8UqDyY5GjRru8PDKuYn7Fq19j1CQ+nJSsGKOzg==}
@@ -4406,7 +4399,7 @@ snapshots:
     dependencies:
       vue: 3.5.44(typescript@6.0.3)
 
-  '@nextcloud/vue@9.14.0(@vue/compiler-sfc@3.5.44)(debug@4.4.3(supports-color@10.2.2))(esbuild@0.27.7)(rollup@4.61.1)(supports-color@10.2.2)(typescript@6.0.3)(vite@7.3.5(@types/node@26.2.0)(sass@1.101.0)(yaml@2.9.0))':
+  '@nextcloud/vue@9.14.1(@vue/compiler-sfc@3.5.44)(debug@4.4.3(supports-color@10.2.2))(esbuild@0.27.7)(rollup@4.61.1)(supports-color@10.2.2)(typescript@6.0.3)(vite@7.3.5(@types/node@26.2.0)(sass@1.101.0)(yaml@2.9.0))':
     dependencies:
       '@ckpack/vue-color': 1.6.0(vue@3.5.44(typescript@6.0.3))
       '@floating-ui/dom': 1.8.0
@@ -4432,9 +4425,9 @@ snapshots:
       escape-html: 1.0.3
       floating-vue: 5.2.2(vue@3.5.44(typescript@6.0.3))
       focus-trap: 8.2.4
-      linkifyjs: 4.3.3
+      linkifyjs: 4.4.0
       mdast-util-to-string: 4.0.0
-      p-queue: 9.3.5
+      p-queue: 10.0.0
       rehype-external-links: 3.0.0
       rehype-highlight: 7.0.2
       rehype-react: 8.0.0(supports-color@10.2.2)
@@ -4444,12 +4437,12 @@ snapshots:
       remark-unlink-protocols: 1.0.0
       splitpanes: 4.1.2(vue@3.5.44(typescript@6.0.3))
       striptags: 3.2.0
-      tabbable: 6.5.0
+      tabbable: 6.5.1
       tributejs: 5.1.3
       ts-md5: 2.0.1
       unified: 11.0.5
       unist-builder: 4.0.0
-      unist-util-visit-parents: 6.0.2
+      unist-util-visit-parents: 6.1.0
       vue: 3.5.44(typescript@6.0.3)
       vue-router: 5.4.0(@vue/compiler-sfc@3.5.44)(esbuild@0.27.7)(rollup@4.61.1)(vite@7.3.5(@types/node@26.2.0)(sass@1.101.0)(yaml@2.9.0))(vue@3.5.44(typescript@6.0.3))
     transitivePeerDependencies:
@@ -5803,8 +5796,6 @@ snapshots:
 
   esutils@2.0.3: {}
 
-  eventemitter3@5.0.4: {}
-
   events@3.3.0: {}
 
   evp_bytestokey@1.0.3:
@@ -5893,7 +5884,7 @@ snapshots:
 
   focus-trap@8.2.4:
     dependencies:
-      tabbable: 6.5.0
+      tabbable: 6.5.1
 
   follow-redirects@1.16.0(debug@4.4.3(supports-color@10.2.2)):
     optionalDependencies:
@@ -6284,7 +6275,7 @@ snapshots:
 
   lines-and-columns@1.2.4: {}
 
-  linkifyjs@4.3.3: {}
+  linkifyjs@4.4.0: {}
 
   local-pkg@1.2.1:
     dependencies:
@@ -6351,7 +6342,7 @@ snapshots:
       '@types/mdast': 4.0.4
       escape-string-regexp: 5.0.0
       unist-util-is: 6.0.1
-      unist-util-visit-parents: 6.0.2
+      unist-util-visit-parents: 6.1.0
 
   mdast-util-from-markdown@2.0.3(supports-color@10.2.2):
     dependencies:
@@ -6748,12 +6739,7 @@ snapshots:
     dependencies:
       p-limit: 3.1.0
 
-  p-queue@9.3.5:
-    dependencies:
-      eventemitter3: 5.0.4
-      p-timeout: 7.0.1
-
-  p-timeout@7.0.1: {}
+  p-queue@10.0.0: {}
 
   package-name-regex@2.0.6: {}
 
@@ -7431,7 +7417,7 @@ snapshots:
 
   svg-tags@1.0.0: {}
 
-  tabbable@6.5.0: {}
+  tabbable@6.5.1: {}
 
   table@6.9.0:
     dependencies:
@@ -7550,7 +7536,7 @@ snapshots:
     dependencies:
       '@types/unist': 3.0.3
 
-  unist-util-visit-parents@6.0.2:
+  unist-util-visit-parents@6.1.0:
     dependencies:
       '@types/unist': 3.0.3
       unist-util-is: 6.0.1
@@ -7559,7 +7545,7 @@ snapshots:
     dependencies:
       '@types/unist': 3.0.3
       unist-util-is: 6.0.1
-      unist-util-visit-parents: 6.0.2
+      unist-util-visit-parents: 6.1.0
 
   universalify@2.0.1: {}
 
