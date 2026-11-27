@@ -60,6 +60,9 @@ class WeekController extends Controller {
 
 		$userId = $user->getUID();
 		$jsonData = json_encode(['days' => $days], JSON_UNESCAPED_UNICODE);
+		if ($jsonData === false) {
+			return new JSONResponse(['error' => 'Failed to encode data'], Http::STATUS_BAD_REQUEST);
+		}
 
 		$now = time();
 		$existing = $this->weekMapper->findByUserAndWeek($userId, $year, $week);
