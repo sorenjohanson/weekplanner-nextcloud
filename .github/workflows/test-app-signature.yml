@@ -46,7 +46,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@cf4cade2721270509d5b1c766ab3549210a39a2a # v2.33.0
         with:
-          php-version: '8.2'
+          php-version: '8.4'
           extensions: openssl, json
           coverage: none
 
@@ -70,7 +70,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@cf4cade2721270509d5b1c766ab3549210a39a2a # v2.33.0
         with:
-          php-version: '8.2'
+          php-version: '8.4'
           extensions: openssl, json
           coverage: none
 
