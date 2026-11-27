@@ -9,6 +9,10 @@
     findUnusedCode="true"
 	phpVersion="8.2"
 >
+    <issueHandlers>
+        <ClassMustBeFinal errorLevel="suppress"/>
+        <MissingOverrideAttribute errorLevel="suppress"/>
+    </issueHandlers>
     <projectFiles>
         <directory name="lib" />
         <ignoreFiles>
