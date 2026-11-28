@@ -23,7 +23,7 @@
     "@nextcloud/notify_push": "^1.4.0",
     "@nextcloud/router": "^3.2.0",
     "@nextcloud/vue": "^9.14.1",
-    "vue": "^3.5.45",
+    "vue": "^3.5.46",
     "vue-color": "^3.3.3",
     "vuedraggable": "^4.1.0"
   },
